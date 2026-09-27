@@ -1,0 +1,67 @@
+using System.Runtime.InteropServices;
+
+namespace FileSorter.Core;
+
+/// <summary>
+/// Manages the Explorer "Send To" shortcut that lets users right-click any file
+/// → Send to → FileSorter to trigger classification.
+/// </summary>
+/// <remarks>
+/// Uses the WScript.Shell COM interface to write a real .lnk file. Windows-only.
+/// </remarks>
+public static class SendToInstaller
+{
+    public static string GetSendToDir()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "SendTo");
+    }
+
+    public static string GetShortcutPath(string exePath)
+    {
+        return Path.Combine(GetSendToDir(), "FileSorter.lnk");
+    }
+
+    /// <summary>
+    /// True when the FileSorter.lnk shortcut already exists in the SendTo folder.
+    /// </summary>
+    public static bool IsInstalled(string exePath, string? sendToDir = null)
+    {
+        sendToDir ??= GetSendToDir();
+        return File.Exists(Path.Combine(sendToDir, "FileSorter.lnk"));
+    }
+
+    /// <summary>
+    /// Create a .lnk in the SendTo folder pointing to <paramref name="exePath"/>.
+    /// Arguments are preset to <c>--sendto</c> and WindowStyle to 7 (minimized).
+    /// </summary>
+    public static void Install(string exePath)
+    {
+        var comType = Type.GetTypeFromProgID("WScript.Shell")
+            ?? throw new InvalidOperationException("WScript.Shell COM not available (Windows-only).");
+        var shell = Activator.CreateInstance(comType)
+            ?? throw new InvalidOperationException("Failed to instantiate WScript.Shell.");
+
+        try
+        {
+            dynamic shortcut = shell.CreateShortcut(GetShortcutPath(exePath));
+            try
+            {
+                shortcut.TargetPath = exePath;
+                shortcut.Arguments = "--sendto";
+                shortcut.WorkingDirectory = Path.GetDirectoryName(exePath) ?? "";
+                shortcut.WindowStyle = 7;  // 7 = Minimized
+                shortcut.Save();
+            }
+            finally
+            {
+                Marshal.FinalReleaseComObject(shortcut);
+            }
+        }
+        finally
+        {
+            Marshal.FinalReleaseComObject(shell);
+        }
+    }
+}
