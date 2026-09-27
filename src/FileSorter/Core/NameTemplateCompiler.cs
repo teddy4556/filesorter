@@ -6,13 +6,13 @@ namespace FileSorter.Core;
 /// <summary>
 /// Compiles a name template like "{platform}_@{author}_{date:yyyyMMdd}" into a regex string.
 /// Supported tokens:
-///   {name}             → any non-separator (default type: any → [a-zA-Z0-9]+)
+///   {name}             → any non-separator (default type: any → [a-zA-Z0-9._-]+)
 ///   {name:text}        → [a-zA-Z]+
 ///   {name:string}      → [a-zA-Z]+
 ///   {name:int}         → [0-9]+
 ///   {name:number}      → [0-9]+
 ///   {name:date:fmt}    → \d{...} based on fmt
-///   {name:any}         → [a-zA-Z0-9]+
+///   {name:any}         → [a-zA-Z0-9._-]+
 /// Literal characters are escaped for regex.
 /// </summary>
 public static class NameTemplateCompiler
@@ -104,7 +104,7 @@ public static class NameTemplateCompiler
         {
             "text" or "string" => @"[a-zA-Z]+",
             "int" or "number" => @"\d+",
-            "any" => @"[a-zA-Z0-9]+",
+            "any" => @"[a-zA-Z0-9._-]+",
             _ => throw new ArgumentException($"Unknown token type: {typeSpec}")
         };
     }
