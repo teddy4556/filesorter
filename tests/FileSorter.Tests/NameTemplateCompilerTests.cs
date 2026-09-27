@@ -133,4 +133,48 @@ public class NameTemplatePathBuilderTests
         Assert.Empty(NameTemplateCompiler.ExtractTokenNames(""));
         Assert.Empty(NameTemplateCompiler.ExtractTokenNames(null!));
     }
+
+    [Fact]
+    public void Compile_Instagram_Template_Produces_Correct_Regex()
+    {
+        // Instagram 模板:instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}
+        // 注:NameTemplateCompiler 默认 type "any" 接受 [a-zA-Z0-9]+ (不含 ._-)。
+        // 真实 Instagram username 可能含 . _ -,但需要 type spec (text/string) 或 compiler 扩展 — 当前模板走 default。
+        var re = NameTemplateCompiler.CompileToRegex(
+            "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
+        Assert.Contains(@"^instagram-([a-zA-Z0-9]+)-(\d+)-([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-(\d{8})$", re);
+    }
+
+    [Fact]
+    public void Compile_Instagram_Template_Matches_Real_FileName()
+    {
+        var re = NameTemplateCompiler.CompileToRegex(
+            "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
+        // 注:compiler 生成的 regex 带 ^...$ 锚点,只匹配 stem;扩展名 .jpg 不在模板里,这里只测 stem。
+        // 测试 stem:纯 alphanumeric username (避免触发 compiler 的 ._- 限制)。
+        var m = System.Text.RegularExpressions.Regex.Match(
+            "instagram-nasa-1234567890-CwXYZ12345-abc123-20260927", re);
+        Assert.True(m.Success);
+        Assert.Equal("nasa", m.Groups[1].Value);                              // username
+        Assert.Equal("1234567890", m.Groups[2].Value);                        // uid
+        Assert.Equal("CwXYZ12345", m.Groups[3].Value);                        // shortcode
+        Assert.Equal("abc123", m.Groups[4].Value);                            // first_name
+        Assert.Equal("20260927", m.Groups[5].Value);                          // date
+    }
+
+    [Fact]
+    public void Build_Instagram_Path_With_Username_Mapping()
+    {
+        // 仅 username 进一级目录
+        var mappings = new List<Mapping>
+        {
+            new() { Token = "{username}", Level = 1 },
+        };
+        var path = NameTemplatePathBuilder.BuildPath(
+            baseDestination: @"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\instagram",
+            template: "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}",
+            mappings: mappings,
+            captured: new[] { "nasa", "1234567890", "CwXYZ12345", "abc123", "20260927" });
+        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\instagram\nasa", path);
+    }
 }
