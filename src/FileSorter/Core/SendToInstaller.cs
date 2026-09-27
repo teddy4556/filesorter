@@ -40,7 +40,9 @@ public static class SendToInstaller
     {
         var comType = Type.GetTypeFromProgID("WScript.Shell")
             ?? throw new InvalidOperationException("WScript.Shell COM not available (Windows-only).");
-        var shell = Activator.CreateInstance(comType)
+        // Cast to dynamic so we can call COM members (CreateShortcut, Save) without
+        // referencing Interop.IWshRuntimeLibrary.
+        dynamic shell = Activator.CreateInstance(comType)
             ?? throw new InvalidOperationException("Failed to instantiate WScript.Shell.");
 
         try
@@ -56,12 +58,14 @@ public static class SendToInstaller
             }
             finally
             {
-                Marshal.FinalReleaseComObject(shortcut);
+                if (System.Runtime.InteropServices.Marshal.IsComObject(shortcut))
+                    Marshal.FinalReleaseComObject(shortcut);
             }
         }
         finally
         {
-            Marshal.FinalReleaseComObject(shell);
+            if (Marshal.IsComObject(shell))
+                Marshal.FinalReleaseComObject(shell);
         }
     }
 }

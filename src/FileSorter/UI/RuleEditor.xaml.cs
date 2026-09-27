@@ -118,7 +118,7 @@ public partial class RuleEditor : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var tb = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(tb, 0);
-        var box = new TextBox { Text = value };
+        var box = new System.Windows.Controls.TextBox { Text = value };
         box.TextChanged += (_, _) => onChange(box.Text);
         Grid.SetColumn(box, 1);
         grid.Children.Add(tb);
@@ -181,7 +181,7 @@ public partial class RuleEditor : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"重新加载失败: {ex.Message}", "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"重新加载失败: {ex.Message}", "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -190,12 +190,12 @@ public partial class RuleEditor : Window
         try
         {
             RulesFileWriter.WriteWithBackup(_rulesPath, _cfg);
-            MessageBox.Show($"已保存到 {_rulesPath}\n(同时保留了最近 3 份 backup)",
+            System.Windows.MessageBox.Show($"已保存到 {_rulesPath}\n(同时保留了最近 3 份 backup)",
                 "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存失败: {ex.Message}", "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"保存失败: {ex.Message}", "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
