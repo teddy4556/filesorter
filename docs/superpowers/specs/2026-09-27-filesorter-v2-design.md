@@ -72,7 +72,7 @@
   └─────────────────────────────────────┘
   ```
 - 选规则 → 对所有文件用该规则分类
-- 选"默认规则" → 走默认全规则链
+- 选"默认规则"(全自动)→ 走默认全规则链(用户确认 9-27:此选项必要)
 - 取消 → 不动文件
 - 完成后弹通知:"已分类 2 个文件 → D:\示例\文档\file2.pdf"
 
@@ -126,7 +126,7 @@ filesorter.exe --install-sendto         # 单独装 SendTo 快捷方式
 
 - `mappings[]`:数组,每个元素:
   - `token`:占位符字符串,必须出现在 `template` 中
-  - `level`:整数,1=一级目录,2=二级目录,**3+ 也支持**
+  - `level`:整数,**1=一级目录,2=二级目录,3+ 也支持多级**(用户确认 9-27:允许任意整数)
 - **不写 mappings** → 软件用启发式:
   - level 1 = template 第 1 个 token
   - level 2 = template 第 2 个 token
@@ -198,6 +198,8 @@ filesorter.exe --install-sendto         # 单独装 SendTo 快捷方式
   - `int` / `number`:`\d+`
   - `date:yyyyMMdd` / `date:yyyy-MM-dd` / `date:HHmmss`:8 位数字 / 带横线日期
   - `any`:任何字符(贪婪)
+
+> **用户确认 9-27**:`{}` 语法 OK,沿用。
 
 **软件自动生成 regex**:
 - 例:`{platform}_@{author}_{title}_{date:yyyyMMdd}`
@@ -299,6 +301,9 @@ filesorter.exe --install-sendto         # 单独装 SendTo 快捷方式
 ### 6.6 保存/取消行为
 
 - Save:写回 `%APPDATA%\FileSorter\rules.yaml`(用 PathsEditor 类似的原子写)
+  - **写之前**:复制当前 `rules.yaml` 到 `rules.yaml.bak.YYYYMMDD-HHMMSS`(用户确认 9-27:每次 save 留备份)
+  - **保留最近 3 份备份**(超过 3 份自动删最旧的)
+  - 写流程:写 `.tmp` → `File.Replace(.tmp, rules.yaml)`(原子)
 - Reload:从 rules.yaml 重新加载(放弃当前编辑)
 - Cancel:关闭窗口(不保存)
 - 关闭按钮 [X]:等同 Cancel,弹确认"有未保存的更改"
@@ -373,6 +378,7 @@ RuleEngine.LoadFromString
 | 单元:name_template 自动生成 regex | `{platform}_@{author}_{title}` → `^([a-zA-Z]+)_@([^_]+)_([^_]+)$` |
 | 单元:path 自动生成(level 1+2) | mappings 排序 + path 拼接正确 |
 | 单元:SendTo 启动参数解析 | `--sendto file1 file2` → List<string> |
+| 单元:backup 轮转 | save 4 次 → 只有最近 3 份 .bak(最旧的删) |
 | 集成:QuickRuleDialog 行为 | 选规则 → 走 ClassifierService |
 | GUI:RuleEditor 切换 type | 字段动态显示/隐藏 |
 | GUI:Mappings 添加/删除 | 列表更新,template 校验 |
@@ -388,7 +394,7 @@ RuleEngine.LoadFromString
 | 风险 | 缓解 |
 |---|---|
 | v1 公开仓库 README 提到的 path_template 写法,用户可能没升级意识 | README 加 v2 章节说"v1 规则继续生效" |
-| GUI 编辑器错误改坏 rules.yaml | 写之前备份 `rules.yaml.bak.YYYYMMDD-HHMMSS` |
+| GUI 编辑器错误改坏 rules.yaml | 写之前备份 `rules.yaml.bak.YYYYMMDD-HHMMSS`(保留最近 3 份,超过自动删最旧的) |
 | name_template 自动生成 regex 错位 | 单元测试覆盖 10+ 模板 + 默认 demo |
 | SendTo 快捷方式被用户删了 | 每次启动检测并自动重建 |
 | 多文件 SendTo(选规则)只跑一条规则 | UI 提示"该规则会应用于所有选中文件" |
@@ -404,7 +410,7 @@ RuleEngine.LoadFromString
 | **M15** | name_template 自动 regex 生成器 + 单元测试 | 1 h |
 | **M16** | filename_pattern 类型(extension/filename_pattern)+ 单元测试 | 30 min |
 | **M17** | QuickRuleDialog + SendTo 集成 + 启动参数 | 1.5 h |
-| **M18** | RuleEditor 主窗口(列表/添加/编辑/删除/Save) | 2 h |
+| **M18** | RuleEditor 主窗口(列表/添加/编辑/删除/Save)+ save 时 backup 轮转(保留 3 份) | 2 h |
 | **M19** | Mappings UI 子组件 | 1 h |
 | **M20** | Test input 预览功能 | 1 h |
 | **M21** | README + docs/design.md 同步 + plan 文档 | 30 min |
