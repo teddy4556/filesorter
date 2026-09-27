@@ -27,7 +27,6 @@
 - ❌ 不做云后端、不做远程同步 API
 - ❌ 不做图形配置界面(GUI 配置面板)——规则改 YAML 即可
 - ❌ 不做账号系统、不做多用户
-- ❌ 不做开机自启动(用户可手动拖入 .exe 快捷方式到启动文件夹)
 - ❌ 不做 OCR / 脚本调用等高级动作(只做"按规则移动/复制/重命名")
 
 ### 1.3 成功标准
@@ -71,6 +70,17 @@ Windows 资源管理器右键菜单 → "发送到" 子菜单 → "FileSorter"
 ### 2.3 两种触发共享核心
 
 两种方式最终都调用同一个 `ClassifierService.ClassifyAsync(filePaths)` 方法,只是入口不同。
+
+### 2.4 开机自启动
+
+通过注册表 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 实现:
+
+- 写入:`filesorter.exe --install`(在 HKCU\...\Run 下加 `FileSorter` 项,值指向 exe 绝对路径)
+- 移除:`filesorter.exe --uninstall`(删除该项)
+- 开机启动后自动以"无参数"模式启动 = 仅显示托盘图标,不弹主窗口
+
+**为什么用 HKCU 而不是 HKLM**:不需要管理员权限,且隔离到当前用户。
+**为什么不用 Startup 文件夹**:快捷方式占空间且易被删除;注册表更稳定。
 
 ---
 
@@ -277,6 +287,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 | M6: 托盘 + 退出 | TrayIcon + 右键菜单 | 托盘图标可见 |
 | M7: SendTo 集成 | 写快捷方式到 SendTo | 右键菜单出现 |
 | M8: 端到端验证 | 全流程手动跑通 | 用户签字 |
+| M9: 开机自启动 | `--install` / `--uninstall` 命令 + 注册表读写 | 注册表项存在 + 重启后自动起 |
 
 ---
 
@@ -284,7 +295,6 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 
 - 规则按时间段(如:本月 → 临时,更早 → 归档)
 - 简单 GUI 配置面板(目前手改 YAML)
-- 开机自启动(目前手动)
 - 多设备同步(目前自己拷 YAML 到每台设备)
 
 ---
@@ -292,3 +302,4 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 ## 变更记录
 
 - 2026-09-27 初版(M1 完成,待用户最终评审)
+- 2026-09-27 修订:加入 §2.4 开机自启动(HKCU\...\Run)+ M9,移除原"不做开机自启动"项
