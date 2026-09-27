@@ -65,6 +65,9 @@ public static class NameTemplateCompiler
                 "HHmmss" => @"\d{6}",
                 "yyyy-MM-dd" => @"\d{4}-\d{2}-\d{2}",
                 "yyyyMMdd_HHmmss" => @"\d{8}_\d{6}",
+                "yyyy" => @"\d{4}",
+                "MM" => @"\d{2}",
+                "dd" => @"\d{2}",
                 _ => throw new ArgumentException($"Unsupported date format: {fmt}")
             };
         }

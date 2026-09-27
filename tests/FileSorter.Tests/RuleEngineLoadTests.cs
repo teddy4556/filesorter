@@ -41,6 +41,29 @@ public class RuleEngineLoadTests
     }
 
     [Fact]
+    public void Load_ActiveFalse_IsPreserved()
+    {
+        var yaml = """
+            version: 1
+            default_action: move
+            conflict_strategy: rename
+            log_level: info
+            destinations:
+              tmp: D:\cat\tmp
+            rules:
+              - name: disabled
+                type: extension
+                patterns: [tmp]
+                destination: tmp
+                active: false
+            """;
+        var cfg = RuleEngine.LoadFromString(yaml);
+        Assert.Single(cfg.Rules);
+        Assert.False(cfg.Rules[0].Active,
+            "active: false should survive YAML round-trip on load");
+    }
+
+    [Fact]
     public void Load_PathTemplate_PreservesFields()
     {
         var yaml = """
