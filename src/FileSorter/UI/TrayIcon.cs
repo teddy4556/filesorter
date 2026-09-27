@@ -17,6 +17,7 @@ public class TrayIcon : IDisposable
             Text = "FileSorter"
         };
         var menu = new ContextMenuStrip();
+        menu.Items.Add("Open rules…", null, (_, _) => EditRulesRequested?.Invoke());
         menu.Items.Add("Open paths…", null, (_, _) => EditPathsRequested?.Invoke());
         menu.Items.Add("Open rules.yaml", null, (_, _) =>
         {
@@ -34,6 +35,7 @@ public class TrayIcon : IDisposable
     }
 
     public event Action? EditPathsRequested;
+    public event Action? EditRulesRequested;
 
     public void Dispose()
     {

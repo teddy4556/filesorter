@@ -17,16 +17,73 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        var args = Core.StartupArgs.Parse(e.Args);
+        switch (args.Mode)
+        {
+            case Core.StartupMode.Install:
+                Core.AutoStart.Install();
+                Shutdown();
+                return;
+
+            case Core.StartupMode.Uninstall:
+                Core.AutoStart.Uninstall();
+                Shutdown();
+                return;
+
+            case Core.StartupMode.InstallSendTo:
+                try { Core.SendToInstaller.Install(GetExePath()); }
+                catch (Exception ex) { Console.Error.WriteLine($"[install-sendto] {ex.Message}"); }
+                Shutdown();
+                return;
+
+            case Core.StartupMode.SendTo:
+                HandleSendTo(args.Files);
+                Shutdown();
+                return;
+        }
+
+        // Normal startup
         _rulesPath = EnsureRulesFile();
         _cfg = RuleEngine.LoadFromFile(_rulesPath);
+
+        // Best-effort SendTo auto-install on first run
+        try
+        {
+            if (!Core.SendToInstaller.IsInstalled(GetExePath()))
+                Core.SendToInstaller.Install(GetExePath());
+        }
+        catch { /* SendTo is non-critical */ }
 
         _tray = new TrayIcon();
         _tray.Initialize();
         _tray.EditPathsRequested += () => OpenEditPaths();
+        _tray.EditRulesRequested += () => OpenRuleEditor();
 
         _disk = new FloatingDisk();
         _disk.FilesDropped += OnFilesDropped;
         _disk.Show();
+    }
+
+    private void HandleSendTo(IReadOnlyList<string> files)
+    {
+        if (files.Count == 0) return;
+        _rulesPath = EnsureRulesFile();
+        _cfg = RuleEngine.LoadFromFile(_rulesPath);
+
+        var dlg = new QuickRuleDialog(files, _cfg.Rules ?? new List<Rule>())
+        {
+            Owner = null  // top-level, no owner (avoid tying to a hidden main window)
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            var svc = new ClassifierService(_cfg, dryRun: false);
+            foreach (var f in files)
+            {
+                if (File.Exists(f))
+                    svc.ClassifyOne(f);
+            }
+        }
     }
 
     private void OnFilesDropped(string[] paths)
@@ -59,6 +116,27 @@ public partial class App : Application
         // After save, reload config from disk (RuleWatcher would also catch it within 2s).
         try { _cfg = RuleEngine.LoadFromFile(_rulesPath); }
         catch { /* keep old */ }
+    }
+
+    private void OpenRuleEditor()
+    {
+        if (_rulesPath is null) return;
+        var editor = new RuleEditor(_rulesPath, _cfg);
+        editor.ShowDialog();
+        // After save, reload so in-memory state matches disk.
+        try { _cfg = RuleEngine.LoadFromFile(_rulesPath); }
+        catch { /* keep old */ }
+    }
+
+    private static string GetRulesPath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "FileSorter", "rules.yaml");
+
+    private static string GetExePath()
+    {
+        // SingleFile-publish: Assembly.Location is null; use the live process module path.
+        return System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
+            ?? throw new InvalidOperationException("Cannot determine exe path");
     }
 
     private static string EnsureRulesFile()

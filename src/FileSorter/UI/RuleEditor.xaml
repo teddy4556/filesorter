@@ -1,0 +1,49 @@
+<Window x:Class="FileSorter.UI.RuleEditor"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FileSorter - 规则编辑器" Width="900" Height="600"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel Margin="12">
+        <!-- Toolbar -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="+ 添加" Click="OnAdd" Width="80" Margin="0,0,4,0" />
+            <Button Content="删除" Click="OnDelete" Width="80" Margin="0,0,4,0" />
+            <Button Content="上移" Click="OnMoveUp" Width="60" Margin="0,0,4,0" />
+            <Button Content="下移" Click="OnMoveDown" Width="60" Margin="0,0,4,0" />
+            <Separator />
+            <Button Content="重新加载" Click="OnReload" Width="80" Margin="0,0,4,0" />
+            <Button Content="保存" Click="OnSave" Width="80" Background="#4CAF50" Foreground="White" />
+        </StackPanel>
+
+        <!-- Rule list (left) -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="RulesListBox" Grid.Column="0" SelectionChanged="OnSelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox IsChecked="{Binding Active}" Click="OnActiveToggle" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text=" (" Foreground="Gray" />
+                            <TextBlock Text="{Binding Type}" Foreground="Gray" />
+                            <TextBlock Text=")" Foreground="Gray" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Edit panel (right) -->
+            <Border Grid.Column="1" BorderBrush="#CCC" BorderThickness="1" Padding="12" Margin="8,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="EditPanel">
+                        <TextBlock Text="选择左侧规则进行编辑" Foreground="Gray" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>
