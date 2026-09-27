@@ -46,7 +46,7 @@ public static class RuleEngine
                 case "extension":
                     if (rule.Patterns != null && rule.Patterns.Any(p =>
                         string.Equals(p, ext, StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(rule, rule.Destination!);
+                        return DestResult(cfg, rule, rule.Destination!);
                     break;
 
                 case "filename_keyword":
@@ -55,7 +55,7 @@ public static class RuleEngine
                         name.Contains(p, rule.CaseSensitive == true
                             ? StringComparison.Ordinal
                             : StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(rule, rule.Destination!);
+                        return DestResult(cfg, rule, rule.Destination!);
                     break;
 
                 case "combined":
@@ -64,7 +64,7 @@ public static class RuleEngine
                         name.Contains(p, rule.CaseSensitive == true
                             ? StringComparison.Ordinal
                             : StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(rule, rule.Destination!);
+                        return DestResult(cfg, rule, rule.Destination!);
                     break;
 
                 case "path_template":
@@ -77,9 +77,9 @@ public static class RuleEngine
                     // v2: starts_with / ends_with edge matching
                     if (rule.Extensions != null && !rule.Extensions.Contains(ext)) break;
                     if (MatchStartsWith(name, rule.StartsWith, rule.CaseSensitive == true))
-                        return DestResult(rule, rule.Destination!);
+                        return DestResult(cfg, rule, rule.Destination!);
                     if (MatchEndsWith(name, rule.EndsWith, rule.CaseSensitive == true))
-                        return DestResult(rule, rule.Destination!);
+                        return DestResult(cfg, rule, rule.Destination!);
                     break;
 
                 case "name_template":
@@ -89,15 +89,16 @@ public static class RuleEngine
                     break;
 
                 case "default":
-                    return DestResult(rule, rule.Destination!);
+                    return DestResult(cfg, rule, rule.Destination!);
             }
         }
         return null;
     }
 
-    private static MatchResult DestResult(Rule rule, string alias)
+    private static MatchResult DestResult(RulesConfig cfg, Rule rule, string alias)
     {
-        return new MatchResult(rule.Name, alias);
+        var basePath = ResolveAlias(cfg, alias);
+        return new MatchResult(rule.Name, basePath);
     }
 
     private static MatchResult TemplateResult(RulesConfig cfg, Rule rule, string filePath, string fileName)
