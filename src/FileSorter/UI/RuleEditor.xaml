@@ -38,11 +38,37 @@
 
             <!-- Edit panel (right) -->
             <Border Grid.Column="1" BorderBrush="#CCC" BorderThickness="1" Padding="12" Margin="8,0,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="EditPanel">
-                        <TextBlock Text="选择左侧规则进行编辑" Foreground="Gray" />
-                    </StackPanel>
-                </ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="EditPanel">
+                            <TextBlock Text="选择左侧规则进行编辑" Foreground="Gray" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Test input preview (M20) -->
+                    <Border Grid.Row="1" Background="#F5F5F5" Padding="8" Margin="0,8,0,0" CornerRadius="3">
+                        <StackPanel>
+                            <DockPanel LastChildFill="True">
+                                <TextBlock Text="Test input: " VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,4,0" />
+                                <TextBlock Text="(纯文件名或完整路径)" VerticalAlignment="Center" Foreground="Gray" DockPanel.Dock="Right" />
+                            </DockPanel>
+                            <TextBox x:Name="PreviewInputBox"
+                                Text="filename.jpg"
+                                Margin="0,4,0,4"
+                                TextChanged="OnPreviewInputChanged" />
+                            <TextBlock x:Name="PreviewResultBox"
+                                Text="→ 等待输入"
+                                FontFamily="Consolas"
+                                Foreground="#0066CC"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
     </DockPanel>

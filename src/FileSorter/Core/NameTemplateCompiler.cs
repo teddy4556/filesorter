@@ -47,6 +47,34 @@ public static class NameTemplateCompiler
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Extracts token names from a template, returning the "{name}" form (without type spec).
+    /// Example: "{platform}_@{author}_{date:yyyy}_{title}.{ext}"
+    ///   → ["{platform}", "{author}", "{date}", "{title}", "{ext}"]
+    /// Used by Mappings UI to populate the token picker ComboBox.
+    /// </summary>
+    public static List<string> ExtractTokenNames(string template)
+    {
+        var names = new List<string>();
+        if (string.IsNullOrEmpty(template)) return names;
+        var i = 0;
+        while (i < template.Length)
+        {
+            if (template[i] == '{')
+            {
+                var end = template.IndexOf('}', i + 1);
+                if (end < 0) break;
+                var inner = template.Substring(i + 1, end - i - 1);
+                var colonIdx = inner.IndexOf(':');
+                var name = colonIdx < 0 ? inner : inner.Substring(0, colonIdx);
+                names.Add("{" + name + "}");
+                i = end + 1;
+            }
+            else i++;
+        }
+        return names;
+    }
+
     private static string TokenPattern(string inner)
     {
         var colonIdx = inner.IndexOf(':');

@@ -116,4 +116,21 @@ public class NameTemplatePathBuilderTests
             captured: new[] { "foo", "bar" });
         Assert.Equal(@"D:\x\foo\bar", path);  // level 2 missing → just skip (no empty dir)
     }
+
+    [Fact]
+    public void ExtractTokenNames_StripsTypeSpec()
+    {
+        // Used by Mappings UI to populate the token ComboBox.
+        // Mapping Token format = "{name}" (without type spec) — ExtractTokenNames must match.
+        var names = NameTemplateCompiler.ExtractTokenNames(
+            "{platform}_@{author}_{date:yyyy}_{title}.{ext}");
+        Assert.Equal(new[] { "{platform}", "{author}", "{date}", "{title}", "{ext}" }, names);
+    }
+
+    [Fact]
+    public void ExtractTokenNames_EmptyTemplate_ReturnsEmpty()
+    {
+        Assert.Empty(NameTemplateCompiler.ExtractTokenNames(""));
+        Assert.Empty(NameTemplateCompiler.ExtractTokenNames(null!));
+    }
 }
