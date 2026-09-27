@@ -49,12 +49,28 @@ public partial class RuleEditor : Window
 
         var stack = new StackPanel();
 
-        // Always-present: Name
-        stack.Children.Add(MakeRow("Name", _selectedRule.Name,
+        // Always-present: 规则名称
+        stack.Children.Add(MakeRow("规则名称", _selectedRule.Name,
             v => _selectedRule.Name = v));
-        // Always-present: Type (read-only hint; user uses Add to create new rules)
-        stack.Children.Add(MakeRow("Type", _selectedRule.Type,
-            v => { _selectedRule.Type = v; RebuildEditPanel(); UpdatePreview(); }));
+
+        // Always-present: 规则类型 (ComboBox 中文 label + 英文 value)
+        var typeOptions = new[]
+        {
+            new TypeOption("按扩展名",                  "extension"),
+            new TypeOption("按文件名关键字",            "filename_keyword"),
+            new TypeOption("扩展名+关键字 组合",        "combined"),
+            new TypeOption("完整路径模板",              "path_template"),
+            new TypeOption("文件名边界匹配",            "filename_pattern"),
+            new TypeOption("文件名命名模板",            "name_template"),
+            new TypeOption("默认(兜底)",                "default"),
+        };
+        stack.Children.Add(MakeTypeRow(typeOptions, _selectedRule.Type,
+            v =>
+            {
+                _selectedRule.Type = v;
+                RebuildEditPanel();
+                UpdatePreview();
+            }));
 
         // Type-specific dispatch
         switch (_selectedRule.Type)
@@ -83,7 +99,7 @@ public partial class RuleEditor : Window
             default:
                 stack.Children.Add(new TextBlock
                 {
-                    Text = $"(未知 type '{_selectedRule.Type}' — 显示通用字段)",
+                    Text = $"(未知类型 '{_selectedRule.Type}' — 显示通用字段)",
                     Foreground = System.Windows.Media.Brushes.OrangeRed
                 });
                 BuildGenericPanel(stack);
@@ -93,11 +109,37 @@ public partial class RuleEditor : Window
         EditPanel.Children.Add(stack);
     }
 
+    private record TypeOption(string Label, string Value);
+
+    private UIElement MakeTypeRow(TypeOption[] options, string currentValue, Action<string> onChange)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 4, 0, 4) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var tb = new TextBlock { Text = "规则类型", VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(tb, 0);
+        var cb = new System.Windows.Controls.ComboBox
+        {
+            ItemsSource = options,
+            DisplayMemberPath = "Label",
+            SelectedValuePath = "Value",
+            SelectedValue = currentValue
+        };
+        cb.SelectionChanged += (_, _) =>
+        {
+            if (cb.SelectedValue is string s) onChange(s);
+        };
+        Grid.SetColumn(cb, 1);
+        grid.Children.Add(tb);
+        grid.Children.Add(cb);
+        return grid;
+    }
+
     // --- Type-specific builders ---
 
     private void BuildExtensionPanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("扩展名 (extension)",
+        stack.Children.Add(MakeListBoxRow("扩展名(如 jpg / pdf / txt)",
             _selectedRule.Patterns ?? new(),
             v => _selectedRule.Patterns = v,
             allowEmpty: true));
@@ -106,15 +148,15 @@ public partial class RuleEditor : Window
 
     private void BuildFilenameKeywordPanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("关键字 (patterns)",
+        stack.Children.Add(MakeListBoxRow("关键字(文件名包含)",
             _selectedRule.Patterns ?? new(),
             v => _selectedRule.Patterns = v,
             allowEmpty: true));
-        stack.Children.Add(MakeListBoxRow("扩展名 (extensions)",
+        stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
             _selectedRule.Extensions ?? new(),
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
-        stack.Children.Add(MakeBoolRow("大小写敏感 (case_sensitive)",
+        stack.Children.Add(MakeBoolRow("区分大小写",
             _selectedRule.CaseSensitive == true,
             v => _selectedRule.CaseSensitive = v));
         stack.Children.Add(MakeDestinationRow());
@@ -122,15 +164,15 @@ public partial class RuleEditor : Window
 
     private void BuildCombinedPanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("扩展名 (extension)",
+        stack.Children.Add(MakeListBoxRow("扩展名(如 pdf)",
             _selectedRule.Extension ?? new(),
             v => _selectedRule.Extension = v,
             allowEmpty: true));
-        stack.Children.Add(MakeListBoxRow("关键字 (filename_keyword)",
+        stack.Children.Add(MakeListBoxRow("关键字(文件名包含)",
             _selectedRule.FilenameKeyword ?? new(),
             v => _selectedRule.FilenameKeyword = v,
             allowEmpty: true));
-        stack.Children.Add(MakeBoolRow("大小写敏感 (case_sensitive)",
+        stack.Children.Add(MakeBoolRow("区分大小写",
             _selectedRule.CaseSensitive == true,
             v => _selectedRule.CaseSensitive = v));
         stack.Children.Add(MakeDestinationRow());
@@ -138,14 +180,14 @@ public partial class RuleEditor : Window
 
     private void BuildPathTemplatePanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("扩展名 (extensions)",
+        stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
             _selectedRule.Extensions ?? new(),
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
-        stack.Children.Add(MakeRow("filename_pattern (regex)",
+        stack.Children.Add(MakeRow("文件名正则",
             _selectedRule.FilenamePattern ?? "",
             v => _selectedRule.FilenamePattern = v));
-        stack.Children.Add(MakeRow("path 模板",
+        stack.Children.Add(MakeRow("路径模板",
             _selectedRule.Path ?? "",
             v => _selectedRule.Path = v));
         stack.Children.Add(MakeHelp("支持 {1} {2} ... 捕获组,{destinations.x},{filename},{stem},{ext},{date:yyyyMMdd}"));
@@ -153,19 +195,19 @@ public partial class RuleEditor : Window
 
     private void BuildFilenamePatternPanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("扩展名 (extensions)",
+        stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
             _selectedRule.Extensions ?? new(),
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
-        stack.Children.Add(MakeListBoxRow("starts_with (前缀)",
+        stack.Children.Add(MakeListBoxRow("以前缀开头(例如 Screenshot_)",
             _selectedRule.StartsWith ?? new(),
             v => _selectedRule.StartsWith = v,
             allowEmpty: true));
-        stack.Children.Add(MakeListBoxRow("ends_with (后缀)",
+        stack.Children.Add(MakeListBoxRow("以后缀结尾(例如 _final.pdf)",
             _selectedRule.EndsWith ?? new(),
             v => _selectedRule.EndsWith = v,
             allowEmpty: true));
-        stack.Children.Add(MakeBoolRow("大小写敏感 (case_sensitive)",
+        stack.Children.Add(MakeBoolRow("区分大小写",
             _selectedRule.CaseSensitive == true,
             v => _selectedRule.CaseSensitive = v));
         stack.Children.Add(MakeDestinationRow());
@@ -173,11 +215,11 @@ public partial class RuleEditor : Window
 
     private void BuildNameTemplatePanel(StackPanel stack)
     {
-        stack.Children.Add(MakeListBoxRow("扩展名 (extensions)",
+        stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
             _selectedRule.Extensions ?? new(),
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
-        stack.Children.Add(MakeRow("template (含 {token[:type]})",
+        stack.Children.Add(MakeRow("命名模板(可填 {token[:type]})",
             _selectedRule.Template ?? "",
             v =>
             {
@@ -186,13 +228,13 @@ public partial class RuleEditor : Window
                 RebuildEditPanel();
                 UpdatePreview();
             }));
-        stack.Children.Add(MakeHelp("例:{platform}_@{author}_{date:yyyyMMdd}.{ext}"));
+        stack.Children.Add(MakeHelp("示例:{platform}_@{author}_{date:yyyyMMdd}.{ext}"));
         stack.Children.Add(MakeDestinationRow());
 
         // Mappings editor
         stack.Children.Add(new TextBlock
         {
-            Text = "Mappings (token → 目录级别)",
+            Text = "目录映射(token → 第几级目录)",
             FontWeight = FontWeights.Bold,
             Margin = new Thickness(0, 12, 0, 4)
         });
@@ -202,12 +244,12 @@ public partial class RuleEditor : Window
     private void BuildDefaultPanel(StackPanel stack)
     {
         stack.Children.Add(MakeDestinationRow());
-        stack.Children.Add(MakeHelp("default 规则:前面所有规则都不命中时触发,只能配 destination"));
+        stack.Children.Add(MakeHelp("默认规则:前面所有规则都不命中时触发,只能配 目标目录"));
     }
 
     private void BuildGenericPanel(StackPanel stack)
     {
-        stack.Children.Add(MakeRow("Destination", _selectedRule.Destination ?? "",
+        stack.Children.Add(MakeRow("目标目录", _selectedRule.Destination ?? "",
             v => _selectedRule.Destination = string.IsNullOrEmpty(v) ? null : v));
     }
 
@@ -228,10 +270,10 @@ public partial class RuleEditor : Window
             container.Children.Add(BuildMappingRow(mapping, idx, tokenOptions));
         }
 
-        // [+ Add mapping] button
+        // [+ 添加映射] button
         var addBtn = new System.Windows.Controls.Button
         {
-            Content = "+ Add mapping",
+            Content = "+ 添加映射",
             Width = 120,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
             Margin = new Thickness(0, 6, 0, 0)
@@ -358,7 +400,7 @@ public partial class RuleEditor : Window
         }
         container.Children.Add(listPanel);
 
-        var addBtn = new System.Windows.Controls.Button { Content = "+ Add", Width = 60, HorizontalAlignment = System.Windows.HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
+        var addBtn = new System.Windows.Controls.Button { Content = "+ 添加", Width = 60, HorizontalAlignment = System.Windows.HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
         addBtn.Click += (_, _) =>
         {
             items.Add("");
@@ -415,7 +457,7 @@ public partial class RuleEditor : Window
         // Build dropdown from _cfg.Destinations keys + free-text fallback.
         var aliases = _cfg.Destinations.Keys.ToList();
         var container = new StackPanel { Margin = new Thickness(0, 4, 0, 4) };
-        container.Children.Add(new TextBlock { Text = "destination (alias 或 绝对路径)", FontWeight = FontWeights.SemiBold });
+        container.Children.Add(new TextBlock { Text = "目标目录(选别名 或 填绝对路径)", FontWeight = FontWeights.SemiBold });
         var cb = new System.Windows.Controls.ComboBox
         {
             IsEditable = true,
@@ -519,6 +561,73 @@ public partial class RuleEditor : Window
         {
             System.Windows.MessageBox.Show($"保存失败: {ex.Message}", "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>
+    /// 显示示例规则下拉菜单 — 当前已实现:社交媒体图片。
+    /// 选完后追加为新规则到 _cfg.Rules,并选中。
+    /// </summary>
+    private void OnLoadExample(object sender, RoutedEventArgs e)
+    {
+        var menu = new System.Windows.Controls.ContextMenu();
+        var socialMedia = new System.Windows.Controls.MenuItem { Header = "社交媒体图片 (platform_author + 2 级目录)" };
+        socialMedia.Click += (_, _) => LoadExampleSocialMedia();
+        menu.Items.Add(socialMedia);
+
+        // 后续可以加更多示例
+        // var invoices = new MenuItem { Header = "发票 PDF" };
+        // menu.Items.Add(invoices);
+
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        var cancelItem = new System.Windows.Controls.MenuItem { Header = "取消" };
+        menu.Items.Add(cancelItem);
+
+        if (sender is System.Windows.Controls.Button btn)
+            menu.PlacementTarget = btn;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// 示例规则:社交媒体图片
+    /// 文件名格式:{platform}_@{author}_{title}.{ext}
+    /// → 目标路径:{destinations.images}\{platform}\{author}\{filename}
+    /// 例:twitter_@hahaoy8_mypic.jpg  →  D:\图片\twitter\hahaoy8\twitter_@hahaoy8_mypic.jpg
+    /// </summary>
+    private void LoadExampleSocialMedia()
+    {
+        // 确保 destinations.images 存在
+        if (!_cfg.Destinations.ContainsKey("images"))
+        {
+            _cfg.Destinations["images"] = @"D:\图片\社交媒体";
+        }
+
+        var example = new Rule
+        {
+            Name = "社交媒体图片",
+            Type = "name_template",
+            Destination = "images",
+            Active = true,
+            Extensions = new() { "jpg", "jpeg", "png", "webp" },
+            Template = "{platform}_@{author}_{title}.{ext}",
+            Mappings = new()
+            {
+                new() { Token = "{platform}", Level = 1 },
+                new() { Token = "{author}",   Level = 2 }
+            }
+        };
+
+        _cfg.Rules ??= new();
+        _cfg.Rules.Add(example);
+        RefreshList();
+        RulesListBox.SelectedItem = example;
+        // 提示用户
+        System.Windows.MessageBox.Show(
+            "已添加示例规则:社交媒体图片\n\n" +
+            "匹配文件名格式:{platform}_@{author}_{title}.{ext}\n" +
+            "例:twitter_@hahaoy8_xxxxx.jpg\n" +
+            "目标路径:images \\ {platform} \\ {author}\n\n" +
+            "修改目标目录、模板或映射后,记得点 保存 写入 rules.yaml。",
+            "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     // --- Test input preview (M20 / spec §6.5) ---

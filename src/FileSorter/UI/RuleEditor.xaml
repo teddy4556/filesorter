@@ -11,6 +11,8 @@
             <Button Content="上移" Click="OnMoveUp" Width="60" Margin="0,0,4,0" />
             <Button Content="下移" Click="OnMoveDown" Width="60" Margin="0,0,4,0" />
             <Separator />
+            <Button Content="加载示例…" Click="OnLoadExample" Width="100" Margin="0,0,4,0" Background="#FF9800" Foreground="White" />
+            <Separator />
             <Button Content="重新加载" Click="OnReload" Width="80" Margin="0,0,4,0" />
             <Button Content="保存" Click="OnSave" Width="80" Background="#4CAF50" Foreground="White" />
         </StackPanel>
@@ -54,7 +56,7 @@
                     <Border Grid.Row="1" Background="#F5F5F5" Padding="8" Margin="0,8,0,0" CornerRadius="3">
                         <StackPanel>
                             <DockPanel LastChildFill="True">
-                                <TextBlock Text="Test input: " VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,4,0" />
+                                <TextBlock Text="测试输入:" VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,4,0" FontWeight="FontWeights.SemiBold" />
                                 <TextBlock Text="(纯文件名或完整路径)" VerticalAlignment="Center" Foreground="Gray" DockPanel.Dock="Right" />
                             </DockPanel>
                             <TextBox x:Name="PreviewInputBox"
