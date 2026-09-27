@@ -105,6 +105,9 @@ public static class NameTemplateCompiler
             "text" or "string" => @"[a-zA-Z]+",
             "int" or "number" => @"\d+",
             "any" => @"[a-zA-Z0-9._-]+",
+            // v2.3: Unicode token types — match Unicode letters (CJK / Cyrillic / accented) + underscore
+            // (excludes \p{N} and '-' so it doesn't eat the template's separator/digit tokens)
+            "unicode" or "chinese" or "cjk" => @"[\p{L}_]+",
             _ => throw new ArgumentException($"Unknown token type: {typeSpec}")
         };
     }

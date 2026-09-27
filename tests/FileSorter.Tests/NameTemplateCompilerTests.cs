@@ -216,7 +216,7 @@ public class NameTemplatePathBuilderTests
     }
 
     [Fact]
-    public void Build_Instagram_Path_With_Username_Mapping()
+    public void BuildPath_UsernameOnly_InstagramExample()
     {
         // 仅 username 进一级目录
         var mappings = new List<Mapping>
@@ -229,5 +229,50 @@ public class NameTemplatePathBuilderTests
             mappings: mappings,
             captured: new[] { "nasa", "1234567890", "CwXYZ12345", "abc123", "20260927" });
         Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\instagram\nasa", path);
+    }
+
+    // v2.3: Unicode token type — matches CJK / Cyrillic / accented chars
+    [Fact]
+    public void Compile_Unicode_Type_Matches_CJK()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        // Should match Chinese user_name like "夕阳无限好"
+        Assert.Contains(@"\p{L}", re);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@Cuminsides0)-夕阳无限好-20260926-142011-2103852135859593660",
+            re);
+        Assert.True(match.Success);
+        Assert.Equal("Cuminsides0", match.Groups[1].Value);
+        Assert.Equal("夕阳无限好", match.Groups[2].Value);
+    }
+
+    [Fact]
+    public void Compile_Chinese_Alias_Of_Unicode()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("{user_name:chinese}");
+        Assert.Contains(@"\p{L}", re);
+    }
+
+    [Fact]
+    public void Compile_CJK_Alias_Of_Unicode()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("{user_name:cjk}");
+        Assert.Contains(@"\p{L}", re);
+    }
+
+    [Fact]
+    public void BuildPath_Unicode_UserName_Twitter()
+    {
+        // 真实场景:twitter 文件 user_name 含中文
+        var mappings = new List<Mapping>
+        {
+            new() { Token = "{user_id}", Level = 1 },
+        };
+        var path = NameTemplatePathBuilder.BuildPath(
+            baseDestination: @"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\twitter",
+            template: "twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}",
+            mappings: mappings,
+            captured: new[] { "Cuminsides0", "夕阳无限好", "20260926-142011", "2103852135859593660" });
+        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\twitter\Cuminsides0", path);
     }
 }

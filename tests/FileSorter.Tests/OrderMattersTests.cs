@@ -1,3 +1,4 @@
+using FileSorter.Core;
 using FileSorter.Core.Models;
 using Xunit;
 
