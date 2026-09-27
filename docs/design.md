@@ -144,7 +144,7 @@ rules:
     type: path_template
     extensions: [jpg, jpeg, png, gif, webp]
     filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'   # 正则,捕获组 1=平台,捕获组 2=作者
-    path: '{destinations.images}\{1}\{2}'         # 引用捕获组 + destinations 别名
+    path: '{destinations.images}\{1}\@{2}'         # @ 是字面字符,因为 group 2 不包含 @
     # 可用 token:{date:yyyy-MM} / {ext} / {filename} / {stem} 等
     destination_alias: images                     # 路径别名(可选,纯引用)
 

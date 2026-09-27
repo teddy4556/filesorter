@@ -1,0 +1,44 @@
+version: 1
+default_action: move
+conflict_strategy: rename
+log_level: info
+
+destinations:
+  images: D:\分类\图片
+  documents: D:\分类\文档
+  archives: D:\分类\压缩包
+  inbox: D:\分类\未分类
+
+rules:
+  - name: 社交媒体图片
+    type: path_template
+    extensions: [jpg, jpeg, png, gif, webp]
+    filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
+    path: '{destinations.images}\{1}\@{2}'
+
+  - name: 截图
+    type: combined
+    extension: [png, jpg]
+    filename_keyword: ["screenshot", "截图", "screen"]
+    destination: images
+
+  - name: 发票
+    type: filename_keyword
+    patterns: ["发票", "invoice", "receipt"]
+    case_sensitive: false
+    extensions: [pdf, jpg, png]
+    destination: documents
+
+  - name: 压缩包
+    type: extension
+    patterns: [zip, rar, 7z, tar, gz]
+    destination: archives
+
+  - name: 图片
+    type: extension
+    patterns: [jpg, jpeg, png, gif, bmp, webp, svg]
+    destination: images
+
+  - name: 其他
+    type: default
+    destination: inbox

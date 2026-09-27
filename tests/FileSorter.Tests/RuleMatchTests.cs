@@ -34,7 +34,7 @@ public class RuleMatchTests
             type: path_template
             extensions: [jpg, png]
             filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-            path: '{destinations.images}\{1}\{2}'
+            path: '{destinations.images}\{1}\@{2}'
           - name: catch-all
             type: default
             destination: inbox
@@ -82,12 +82,12 @@ public class RuleMatchTests
                 type: path_template
                 extensions: [jpg, png]
                 filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-                path: '{destinations.images}\{1}\{2}'
+                path: '{destinations.images}\{1}\@{2}'
             """;
         var cfg = RuleEngine.LoadFromString(yaml);
         var r = RuleEngine.Match(cfg, @"C:\in\twitter_(@hahaoy8)_肉丝儿_20260730.jpg");
         Assert.NotNull(r);
-        Assert.Equal(@"D:\cat\img\twitter\@hahaoy8", r!.DestinationPath);
+        Assert.Equal(@"D:\cat\img\twitter\hahaoy8", r!.DestinationPath);
     }
 
     [Fact]

@@ -271,7 +271,7 @@ public class RuleEngineLoadTests
             type: path_template
             extensions: [jpg, png]
             filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-            path: '{destinations.images}\{1}\{2}'
+            path: '{destinations.images}\{1}\@{2}'
         """;
         var cfg = RuleEngine.LoadFromString(yaml);
         var r = cfg.Rules[0];
@@ -429,7 +429,7 @@ public class RuleMatchTests
             type: path_template
             extensions: [jpg, png]
             filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-            path: '{destinations.images}\{1}\{2}'
+            path: '{destinations.images}\{1}\@{2}'
           - name: catch-all
             type: default
             destination: inbox
@@ -1289,7 +1289,7 @@ rules:
     type: path_template
     extensions: [jpg, jpeg, png, gif, webp]
     filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-    path: '{destinations.images}\{1}\{2}'
+    path: '{destinations.images}\{1}\@{2}'
 
   - name: 截图
     type: combined
@@ -1494,7 +1494,7 @@ public class IntegrationTests : IDisposable
                 type: path_template
                 extensions: [jpg, png]
                 filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-                path: '{{destinations.images}}\{{1}}\{{2}}'
+                path: '{{destinations.images}}\{{1}}\@{{2}}'
             """);
 
         var src = Path.Combine(_tmp, "twitter_(@hahaoy8)_肉丝儿_20260730-085445_2082751743373496825.jpg");
