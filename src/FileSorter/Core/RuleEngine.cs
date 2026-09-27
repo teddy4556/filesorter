@@ -7,6 +7,7 @@ public static class RuleEngine
 {
     private static readonly IDeserializer _yaml = new DeserializerBuilder()
         .IgnoreUnmatchedProperties()
+        .WithCaseInsensitivePropertyMatching()
         .Build();
 
     public static RulesConfig LoadFromString(string yaml)
