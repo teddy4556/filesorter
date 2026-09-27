@@ -87,7 +87,7 @@ public class RuleMatchTests
         var cfg = RuleEngine.LoadFromString(yaml);
         var r = RuleEngine.Match(cfg, @"C:\in\twitter_(@hahaoy8)_肉丝儿_20260730.jpg");
         Assert.NotNull(r);
-        Assert.Equal(@"D:\cat\img\twitter\hahaoy8", r!.DestinationPath);
+        Assert.Equal(@"D:\cat\img\twitter\@hahaoy8", r!.DestinationPath);
     }
 
     [Fact]
