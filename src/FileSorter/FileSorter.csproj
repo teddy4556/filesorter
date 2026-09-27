@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AssemblyName>filesorter</AssemblyName>
@@ -10,5 +12,14 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="15.1.6" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="rules.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
