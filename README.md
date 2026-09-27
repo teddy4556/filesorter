@@ -190,8 +190,8 @@ filesorter/
 
 - 左侧规则列表(每条带 `Active` 复选框)
 - 右侧字段自动按 rule.type 切换:extension / filename_pattern / path_template / name_template 各有专属字段
-- Mappings 用 token 下拉框(自动从模板抽取)+ level 下拉框(1-5)
-- 底部"测试输入"框实时计算某文件名会落到哪个目录
+- Mappings 用 token 下拉框(自动从模板抽取)+ level 下拉框(1-5)+ Add/Delete 行
+- 底部"测试输入"框:输入文件名,实时显示会被分到哪个目录(走完整 RuleEngine.Match 流水线)
 - 保存时自动留最近 3 份 backup
 
 ### SendTo 一键启用
