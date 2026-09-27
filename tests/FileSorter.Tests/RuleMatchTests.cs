@@ -97,4 +97,29 @@ public class RuleMatchTests
         Assert.NotNull(r);
         Assert.Equal(@"D:\cat\inbox", r!.DestinationPath);
     }
+
+    [Fact]
+    public void Match_Combined_PdfInvoiceGoesToInvoices()
+    {
+        // 用独立 yaml 避免污染共享 Cfg(): filename_keyword "invoice" 也会匹配这份文件,
+        // 所以这里只放一条 combined (pdf + invoice) → invoices,验证 combined 不会被前面的规则抢走。
+        var yaml = """
+            version: 1
+            default_action: move
+            conflict_strategy: rename
+            log_level: info
+            destinations:
+              invoices: D:\cat\invoices
+            rules:
+              - name: pdf-invoice
+                type: combined
+                extension: [pdf]
+                filename_keyword: ["invoice"]
+                destination: invoices
+            """;
+        var cfg = RuleEngine.LoadFromString(yaml);
+        var r = RuleEngine.Match(cfg, @"C:\in\2026_invoice_acme.pdf");
+        Assert.NotNull(r);
+        Assert.Equal(@"D:\cat\invoices", r!.DestinationPath);
+    }
 }
