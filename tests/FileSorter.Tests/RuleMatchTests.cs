@@ -181,7 +181,7 @@ public class RuleMatchTests
                     Name = "social",
                     Type = "name_template",
                     Extensions = new() { "jpg" },
-                    Template = "{platform}_@{author}",
+                    Template = "{platform}_@{author}_{title}",
                     Mappings = new()
                     {
                         new() { Token = "{platform}", Level = 1 },
@@ -209,7 +209,7 @@ public class RuleMatchTests
                     Name = "social flat",
                     Type = "name_template",
                     Extensions = new() { "jpg" },
-                    Template = "{platform}_@{author}",
+                    Template = "{platform}_@{author}_{title}",
                     Mappings = null,
                     Destination = "images"
                 }

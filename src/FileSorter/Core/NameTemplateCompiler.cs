@@ -53,10 +53,12 @@ public static class NameTemplateCompiler
         string name = colonIdx < 0 ? inner : inner.Substring(0, colonIdx);
         string typeSpec = colonIdx < 0 ? "any" : inner.Substring(colonIdx + 1);
 
-        // Handle date:fmt → name="date", fmt="yyyyMMdd" etc.
-        if (typeSpec.StartsWith("date:"))
+        // Handle date format: {date:yyyyMMdd} or {name:date:yyyyMMdd}
+        // - {date:yyyyMMdd}        → name="date",  typeSpec="yyyyMMdd"  (no colon for date token itself)
+        // - {name:date:yyyyMMdd}   → name="name",  typeSpec="date:yyyyMMdd"
+        if (name == "date" || typeSpec.StartsWith("date:"))
         {
-            var fmt = typeSpec.Substring("date:".Length);
+            var fmt = name == "date" ? typeSpec : typeSpec.Substring("date:".Length);
             return fmt switch
             {
                 "yyyyMMdd" => @"\d{8}",
