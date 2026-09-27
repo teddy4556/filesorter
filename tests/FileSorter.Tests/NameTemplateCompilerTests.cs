@@ -308,4 +308,54 @@ public class NameTemplatePathBuilderTests
         Assert.True(System.Text.RegularExpressions.Regex.Match("img-42 (1)", re).Success);
         Assert.True(System.Text.RegularExpressions.Regex.Match("img-42-1_2", re).Success);
     }
+
+    // v2.5 Bug #47: Unicode type must accept ° and full-width parens for Twitter display names
+    [Fact]
+    public void Compile_Unicode_Type_Accepts_Degree_Sign()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@Lris888)-0\u00b0C-20260927-033826-2104053021021794563_1_1_1_1_1_1_1",
+            re);
+        Assert.True(match.Success, $"Should match 0°C user_name");
+        Assert.Equal("Lris888", match.Groups[1].Value);
+        Assert.Equal("0\u00b0C", match.Groups[2].Value);
+    }
+
+    [Fact]
+    public void Compile_Unicode_Type_Accepts_FullWidth_Parens()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@lhvin8462)-Lhvin阿翔（惠州）-20260927-032435-2104049535052058952_1_1_1_1_1",
+            re);
+        Assert.True(match.Success, $"Should match Lhvin阿翔（惠州） user_name");
+        Assert.Equal("lhvin8462", match.Groups[1].Value);
+        Assert.Equal("Lhvin阿翔（惠州）", match.Groups[2].Value);
+    }
+
+    // v2.6 Bug #48: Unicode type must accept emoji, symbols, and marks for Twitter display names
+    [Fact]
+    public void Compile_Unicode_Type_Accepts_Emoji_And_Symbols()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@Lris_Cc)-\uD83D\uDC26\u2B1B\u94ED\u9723\u02DA\u219D-20260927-035155-2104056415430005210",
+            re);
+        Assert.True(match.Success, $"Should match 🐦⬛银霣˚↝ user_name with emoji and symbols");
+        Assert.Equal("Lris_Cc", match.Groups[1].Value);
+        Assert.Equal("\uD83D\uDC26\u2B1B\u94ED\u9723\u02DA\u219D", match.Groups[2].Value);
+    }
+
+    [Fact]
+    public void Compile_Unicode_Type_Accepts_Pig_Emoji()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@PIKAQ_Q)-PIKA\uD83D\uDC37-20260925-111516-2103443213822710080",
+            re);
+        Assert.True(match.Success, $"Should match PIKA🐷 user_name");
+        Assert.Equal("PIKAQ_Q", match.Groups[1].Value);
+        Assert.Equal("PIKA\uD83D\uDC37", match.Groups[2].Value);
+    }
 }

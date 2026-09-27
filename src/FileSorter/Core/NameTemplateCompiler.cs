@@ -108,7 +108,13 @@ public static class NameTemplateCompiler
             "any" => @"[a-zA-Z0-9._-]+",
             // v2.3: Unicode token types — match Unicode letters (CJK / Cyrillic / accented) + underscore
             // (excludes \p{N} and '-' so it doesn't eat the template's separator/digit tokens)
-            "unicode" or "chinese" or "cjk" => @"[\p{L}_]+",
+            // v2.5 Bug #47: Also accept ° (U+00B0) and full-width parens （）U+FF08/FF09 (Twitter display names)
+            //   + digits (\p{Nd}) for display names that start with a digit like "0°C"
+            // v2.6 Bug #48: Also accept \p{S} (symbols incl emoji ⬛↝) + \p{M} (marks like ˚)
+            // + \p{Cs} (surrogate code units) so emoji in supplementary plane (U+1F426 etc.)
+            //   match correctly — .NET char class treats surrogate halves separately
+            // NO '-' so template's `-` separator is preserved
+            "unicode" or "chinese" or "cjk" => @"[\p{L}\p{N}\p{S}\p{M}\p{Cs}\u00B0\uFF08\uFF09_]+",
             _ => throw new ArgumentException($"Unknown token type: {typeSpec}")
         };
     }
