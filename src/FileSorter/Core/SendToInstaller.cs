@@ -68,4 +68,17 @@ public static class SendToInstaller
                 Marshal.FinalReleaseComObject(shell);
         }
     }
+
+    /// <summary>
+    /// Delete the FileSorter.lnk from the SendTo folder. No-op if not installed.
+    /// Returns true if a file was deleted.
+    /// </summary>
+    public static bool Uninstall(string? sendToDir = null)
+    {
+        sendToDir ??= GetSendToDir();
+        var lnk = Path.Combine(sendToDir, "FileSorter.lnk");
+        if (!File.Exists(lnk)) return false;
+        File.Delete(lnk);
+        return true;
+    }
 }

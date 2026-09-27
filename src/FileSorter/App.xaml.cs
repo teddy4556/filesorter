@@ -47,22 +47,75 @@ public partial class App : Application
         _rulesPath = EnsureRulesFile();
         _cfg = RuleEngine.LoadFromFile(_rulesPath);
 
-        // Best-effort SendTo auto-install on first run
+        // Best-effort SendTo auto-install on first run (v2: write to stderr so failures are visible)
         try
         {
             if (!Core.SendToInstaller.IsInstalled(GetExePath()))
+            {
                 Core.SendToInstaller.Install(GetExePath());
+                Console.Error.WriteLine($"[FileSorter] SendTo 已安装: %USERPROFILE%\\SendTo\\FileSorter.lnk");
+            }
         }
-        catch { /* SendTo is non-critical */ }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[FileSorter] SendTo 安装失败: {ex.Message}");
+        }
 
         _tray = new TrayIcon();
         _tray.Initialize();
         _tray.EditPathsRequested += () => OpenEditPaths();
         _tray.EditRulesRequested += () => OpenRuleEditor();
+        _tray.InstallSendToRequested += () => InstallSendToFromMenu();
+        _tray.UninstallSendToRequested += () => UninstallSendToFromMenu();
 
         _disk = new FloatingDisk();
         _disk.FilesDropped += OnFilesDropped;
         _disk.Show();
+    }
+
+    private void InstallSendToFromMenu()
+    {
+        try
+        {
+            var exe = GetExePath();
+            if (Core.SendToInstaller.IsInstalled(exe))
+            {
+                System.Windows.MessageBox.Show("已经安装到右键菜单(发送)了。",
+                    "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            Core.SendToInstaller.Install(exe);
+            System.Windows.MessageBox.Show(
+                $"已安装到右键菜单(发送)。\n\n位置:%USERPROFILE%\\SendTo\\FileSorter.lnk\n\n现在任意文件右键 → 发送到 → FileSorter 即可触发分类。",
+                "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"安装失败:{ex.Message}",
+                "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void UninstallSendToFromMenu()
+    {
+        try
+        {
+            if (Core.SendToInstaller.Uninstall())
+            {
+                System.Windows.MessageBox.Show("已从右键菜单(发送)卸载 FileSorter。",
+                    "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("右键菜单没有 FileSorter,无需卸载。",
+                    "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"卸载失败:{ex.Message}",
+                "FileSorter", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void HandleSendTo(IReadOnlyList<string> files)

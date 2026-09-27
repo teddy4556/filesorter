@@ -59,4 +59,31 @@ public class SendToInstallerTests
 
         Directory.Delete(sendToDir, recursive: true);
     }
+
+    [Fact]
+    public void Uninstall_Deletes_Lnk_And_Returns_True()
+    {
+        var sendToDir = Path.Combine(Path.GetTempPath(), "sendto_test_" + Guid.NewGuid());
+        Directory.CreateDirectory(sendToDir);
+        var lnkPath = Path.Combine(sendToDir, "FileSorter.lnk");
+        File.WriteAllText(lnkPath, "");
+
+        var deleted = SendToInstaller.Uninstall(sendToDir);
+        Assert.True(deleted);
+        Assert.False(File.Exists(lnkPath));
+
+        Directory.Delete(sendToDir, recursive: true);
+    }
+
+    [Fact]
+    public void Uninstall_Returns_False_When_Not_Installed()
+    {
+        var sendToDir = Path.Combine(Path.GetTempPath(), "sendto_test_" + Guid.NewGuid());
+        Directory.CreateDirectory(sendToDir);
+
+        var deleted = SendToInstaller.Uninstall(sendToDir);
+        Assert.False(deleted);
+
+        Directory.Delete(sendToDir, recursive: true);
+    }
 }

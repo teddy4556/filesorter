@@ -27,6 +27,9 @@ public class TrayIcon : IDisposable
             System.Diagnostics.Process.Start("explorer.exe", $"\"{path}\"");
         });
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("安装到右键菜单(发送到)…", null, (_, _) => InstallSendToRequested?.Invoke());
+        menu.Items.Add("卸载右键菜单(发送)", null, (_, _) => UninstallSendToRequested?.Invoke());
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) =>
         {
             System.Windows.Application.Current.Shutdown();
@@ -36,6 +39,8 @@ public class TrayIcon : IDisposable
 
     public event Action? EditPathsRequested;
     public event Action? EditRulesRequested;
+    public event Action? InstallSendToRequested;
+    public event Action? UninstallSendToRequested;
 
     public void Dispose()
     {
