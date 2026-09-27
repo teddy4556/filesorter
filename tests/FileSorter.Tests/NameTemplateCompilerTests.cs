@@ -10,8 +10,8 @@ public class NameTemplateCompilerTests
     public void Compile_Token_Without_Type_Matches_Any_NonSep()
     {
         var re = NameTemplateCompiler.CompileToRegex("{platform}_@{author}_{title}");
-        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\s\(\d+\))?$
-        Assert.EndsWith(@"(?:\s\(\d+\))?$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀 (?:-\\d+(_\\d+)*)?$
+        Assert.EndsWith(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
     }
 
     [Fact]
@@ -54,8 +54,8 @@ public class NameTemplateCompilerTests
     public void Compile_Template_With_Dots_And_Spaces()
     {
         var re = NameTemplateCompiler.CompileToRegex("{name}.{ext}");
-        // compiler 现在在 $ 前允许 optional Windows rename 后缀
-        Assert.Contains(@"\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 OR Explorer dedup 后缀
+        Assert.Contains(@"\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
     }
 }
 
@@ -143,8 +143,8 @@ public class NameTemplatePathBuilderTests
         // 注:NameTemplateCompiler 默认 type "any" 现在接受 [a-zA-Z0-9._-]+ (含 . _ -)。
         var re = NameTemplateCompiler.CompileToRegex(
             "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
-        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\s\(\d+\))?$
-        Assert.Contains(@"(?:\s\(\d+\))?$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀 (?:-\\d+(_\\d+)*)?$
+        Assert.Contains(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
     }
 
     [Fact]
@@ -274,5 +274,38 @@ public class NameTemplatePathBuilderTests
             mappings: mappings,
             captured: new[] { "Cuminsides0", "夕阳无限好", "20260926-142011", "2103852135859593660" });
         Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\twitter\Cuminsides0", path);
+    }
+
+    // v2.3 Bug #46: support Explorer-style dedup suffix -N_N_N at end
+    [Fact]
+    public void Compile_Anchor_Accepts_Explorer_Dedup_Suffix()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
+        // Should match Explorer-style dedup: -0_1_1_1, -1_1, etc.
+        var match = System.Text.RegularExpressions.Regex.Match(
+            "twitter-(@Cuminsides0)-夕阳无限好-20260926-142011-2103852135859593660-0_1_1_1",
+            re);
+        Assert.True(match.Success, $"Should match with -0_1_1_1 suffix");
+        Assert.Equal("Cuminsides0", match.Groups[1].Value);
+        Assert.Equal("夕阳无限好", match.Groups[2].Value);
+    }
+
+    [Fact]
+    public void Compile_Anchor_Accepts_Simple_Dedup_Suffix()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("img-{n:number}");
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42-1_2_3", re).Success);
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42", re).Success);
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42 (1)", re).Success);
+    }
+
+    [Fact]
+    public void Compile_Anchor_Accepts_Both_Suffixes()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("img-{n:number}");
+        // (1) AND -1_2 should not both be present — either or neither
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42", re).Success);
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42 (1)", re).Success);
+        Assert.True(System.Text.RegularExpressions.Regex.Match("img-42-1_2", re).Success);
     }
 }

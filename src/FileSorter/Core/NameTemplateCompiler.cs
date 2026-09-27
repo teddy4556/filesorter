@@ -43,7 +43,8 @@ public static class NameTemplateCompiler
                 i++;
             }
         }
-        sb.Append(@"(?:\s\(\d+\))?$");
+        // v2.3 anchor: 支持 (N) Windows rename 后缀 OR Explorer-style -N_N_N dedup 后缀
+        sb.Append(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$");
         return sb.ToString();
     }
 
