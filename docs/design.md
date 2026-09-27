@@ -25,9 +25,11 @@
 
 - ❌ 不做安装包(自用,直接拷 exe 即可)
 - ❌ 不做云后端、不做远程同步 API
-- ❌ 不做图形配置界面(GUI 配置面板)——规则改 YAML 即可
+- ❌ 不做完整图形配置界面(GUI 配置面板)——规则改 YAML 即可
 - ❌ 不做账号系统、不做多用户
 - ❌ 不做 OCR / 脚本调用等高级动作(只做"按规则移动/复制/重命名")
+
+> **关于 GUI 配置**:经用户 9-27 补充,**仅**为"修改路径"提供一个最小化的文件夹选择对话框(WPF `OpenFolderDialog`),其余字段仍然手改 YAML。这是为了避免手输长路径易错,不是要做完整 GUI。
 
 ### 1.3 成功标准
 
@@ -207,7 +209,8 @@ filesorter/
 │       └── RulesFile.cs        # 规则文件模型
 ├── UI/
 │   ├── FloatingDisk.xaml       # 悬浮窗
-│   └── TrayIcon.cs             # 托盘图标 + 菜单
+│   ├── TrayIcon.cs             # 托盘图标 + 菜单
+│   └── EditPathsWindow.xaml    # 路径编辑窗口(只动 destinations.<name>)
 ├── filesorter.exe              # 构建产物
 └── rules.yaml                  # 用户配置(随 exe 一起分发)
 ```
@@ -237,6 +240,24 @@ FileAction.Move/Copy(src, dest)
 | 干运行模式 | 提供 `--dry-run` 参数 | 测试规则用,不真动文件 |
 | 日志 | 写到 `%LOCALAPPDATA%\FileSorter\logs\`,按天滚动 | 易排查,不占空间 |
 | 单一可执行文件 | dotnet publish `--self-contained false --publish-single-file` | 体积小(<15MB),依赖系统装的 runtime |
+
+### 4.4 主窗口 + 路径编辑(最小化 GUI)
+
+**触发**:托盘菜单 "编辑路径" → 弹出 `EditPathsWindow`,或 `filesorter.exe --edit-paths`。
+
+**窗口内容**:
+- 标题:"FileSorter - 编辑路径"
+- 表单:每个 `destinations.<name>` 一行,显示 [当前路径] [浏览…] [清除]
+- 底部按钮:[保存] [取消] [在文件管理器中打开 rules.yaml]
+
+**保存逻辑**:
+- 改完点保存 → 写回 `%APPDATA%\FileSorter\rules.yaml`(原子替换:写 tmp 文件 + `File.Replace`)
+- 触发 `RuleWatcher` 重新加载(2 秒延迟之内)
+- 不改其它字段(type / patterns / filename_pattern / path 等)
+
+**"浏览…"按钮** = `Microsoft.Win32.OpenFolderDialog`(WPF 内置,Win10+ 可用)。
+
+**不做的事**:不在窗口里加新规则、删规则、改正则——这些还是手改 YAML。
 
 ---
 
@@ -320,6 +341,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 | M8: 端到端验证 | 全流程手动跑通 | 用户签字 |
 | M9: 开机自启动 | `--install` / `--uninstall` 命令 + 注册表读写 | 注册表项存在 + 重启后自动起 |
 | M10: 路径模板规则 | path_template 类型 + 正则抽取 + 多级目录 | twitter 文件分到 `D:\分类\图片\twitter\@hahaoy8\` |
+| M11: 路径编辑 GUI | EditPathsWindow + OpenFolderDialog + 原子保存 | 改一个路径 → 保存 → 2 秒内规则生效 |
 
 ---
 
@@ -336,3 +358,4 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 - 2026-09-27 初版(M1 完成,待用户最终评审)
 - 2026-09-27 修订:加入 §2.4 开机自启动(HKCU\...\Run)+ M9,移除原"不做开机自启动"项
 - 2026-09-27 修订:加入 §3.3 path_template 规则类型(支持正则抽取 + 多级目录)+ M10,演示 twitter 例
+- 2026-09-27 修订:加入 §4.4 EditPathsWindow 最小化 GUI(只改 destinations 路径)+ M11,§1.2 排除项微调
