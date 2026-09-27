@@ -138,10 +138,70 @@ filesorter/
 - **规则匹配顺序自上而下**,**第一**条命中的规则胜出
 - 拖入文件夹 → **每次**都弹递归/顶层对话框(不记忆选择)
 
+## 🆕 v2 新特性(2026-09+)
+
+| 特性 | 说明 |
+|---|---|
+| SendTo 集成 | 自动写 `SendTo\FileSorter.lnk`,资源管理器右键 → 发送到 → FileSorter |
+| Rule + Mappings | name_template 规则可声明 `mappings: [{token, level}]` 控制多级目录生成 |
+| name_template 规则 | `{platform}_@{author}_{date:yyyyMMdd}.{ext}` 这种语义模板,自动编译成 regex |
+| filename_pattern 规则 | `starts_with` / `ends_with` 边匹配 + 多扩展名,比 `combined` 更轻量 |
+| GUI 规则编辑器 | 托盘菜单 → Open rules…,可视化增删改 + 重排 + 实时预览 |
+| 热加载 + backup 保留 | YAML 保存时自动保留最近 3 份 `rules.bak.N` 备份 |
+| Active 开关 | 单条规则可临时禁用(不删),`active: false` 在加载和编辑里都保留 |
+
+### v2 规则示例
+
+```yaml
+# name_template:从模板自动生成多级目录
+- name: 社交媒体图片
+  type: name_template
+  template: "{platform}_@{author}_{date:yyyyMMdd}.{ext}"
+  destination: images
+  mappings:
+    - { token: "{platform}", level: 1 }   # 第 1 级 = 平台
+    - { token: "{author}",   level: 2 }   # 第 2 级 = 作者
+```
+
+`twitter_@hahaoy8_20260927.jpg` → `D:\示例\图片\twitter\@hahaoy8\`
+
+```yaml
+# filename_pattern:边匹配 + 多扩展名
+- name: 截图
+  type: filename_pattern
+  extensions: [png, jpg]
+  starts_with: [screenshot_, ScreenShot]
+  case_sensitive: false
+  destination: images
+```
+
+```yaml
+# 临时禁用某条规则(不删)
+- name: 测试规则
+  type: extension
+  patterns: [tmp]
+  destination: inbox
+  active: false      # v2 新字段;默认 true
+```
+
+### GUI 规则编辑器
+
+托盘菜单 → **Open rules…** 打开可视化编辑器:
+
+- 左侧规则列表(每条带 `Active` 复选框)
+- 右侧字段自动按 rule.type 切换:extension / filename_pattern / path_template / name_template 各有专属字段
+- Mappings 用 token 下拉框(自动从模板抽取)+ level 下拉框(1-5)
+- 底部"测试输入"框实时计算某文件名会落到哪个目录
+- 保存时自动留最近 3 份 backup
+
+### SendTo 一键启用
+
+首次跑 `filesorter.exe --install-sendto`,会在 `%APPDATA%\Microsoft\Windows\SendTo\FileSorter.lnk` 写快捷方式。资源管理器右键 → 发送到 → FileSorter 即可触发分类。
+
 ## 🧪 开发
 
 ```powershell
-# 跑单元测试(16 个)
+# 跑单元测试(49 个:16 v1 + 33 v2)
 dotnet test
 
 # 写完改代码 → 重新发布

@@ -383,3 +383,56 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 - 2026-09-27 修订:加入 §3.3 path_template 规则类型(支持正则抽取 + 多级目录)+ M10,演示 twitter 例
 - 2026-09-27 修订:加入 §4.4 EditPathsWindow 最小化 GUI(只改 destinations 路径)+ M11,§1.2 排除项微调
 - 2026-09-27 修订:加入 §4.5 拖入文件夹对话框(递归/顶层/取消)+ M12
+
+---
+
+## v2 变更记录(2026-09-27 后,M14-M23)
+
+### 新增规则类型 / 字段
+
+- **name_template**:`{token[:type]}` 占位符 → 自动编译为 regex → 配合 `mappings: [{token, level}]` 控制多级目录
+  - 支持 token 类型:`text/string`(字母)、`int/number`(数字)、`any`(字母数字)、`date:yyyyMMdd`/`HHmmss` 等日期格式
+  - 示例:`{platform}_@{author}_{date:yyyyMMdd}.{ext}` + mappings `{platform}→1, {author}→2` → 2 级目录
+- **filename_pattern**:`starts_with` / `ends_with` 边匹配 + 多 `extensions` + `case_sensitive`,比 v1 `combined` 更直观
+- **active**(bool,默认 true):单条规则可临时禁用,`active: false` 在加载/编辑/匹配三处全部生效
+- **mappings**(List<Mapping>):name_template 规则的"token → 目录级别"映射
+- **Mapping**:`{ token, level }`,`level` 1-5,默认 1
+
+### 新增 CLI
+
+- `--install-sendto`:写 `%APPDATA%\Microsoft\Windows\SendTo\FileSorter.lnk`(若 v1 desktop-cli 已就绪则跳过)
+- `--uninstall-sendto`:删上面的 lnk
+
+### GUI 规则编辑器(M18-M20)
+
+- 托盘菜单 → Open rules… 启动 RuleEditor Window
+- 字段动态按 rule.type 渲染(不再 flat dump 所有字段)
+- Mappings UI 用 token 下拉框(自动从模板抽取)+ level 下拉框 + Add/Delete 行
+- "测试输入"实时计算某文件名会落到哪个目录
+- 保存自动留 3 份 `rules.bak.N` backup;Reload 从磁盘重新读
+
+### 实现里程碑
+
+| M# | 内容 |
+|---|---|
+| M14 | Rule 模型加 Active + Mappings + Mapping + YAML round-trip |
+| M15 | NameTemplateCompiler + NameTemplatePathBuilder({token[:type]} → regex → 路径) |
+| M16 | filename_pattern + name_template 类型接入 RuleEngine,Active=false 跳过 |
+| M17 | RulesFileWriter(原子写+保留 3 份 backup)+ StartupArgs + SendToInstaller + QuickRuleDialog |
+| M18 | RuleEditor 列表+增删改+保存 + App.xaml.cs CLI 接线 + TrayIcon 加 Open rules… 菜单 |
+| M19 | RuleEditor 按 type 动态显示字段(extension/filename_pattern/name_template 等)+ Mappings UI 子组件 |
+| M20 | Test input 预览功能(实时 path 计算) |
+| M21 | README + design.md 加 v2 章节(本文) |
+| M22 | 加 v2 端到端测试(目标 ≥4 新 E2E) |
+| M23 | 最终 publish + exe 验证 + push |
+
+### 测试覆盖
+
+- 45 个测试全部通过(M1-M18 累积):包含 v1 兼容性 + v2 新功能(NameTemplateCompiler / NameTemplatePathBuilder / RulesFileWriter / SendToInstaller / Active 跳过 / Mappings round-trip)
+- M22 加 4+ 端到端测试:ExtensionMove / PathTemplate_WithAuthor / NameTemplate_MultiLevelMappings / InactiveRule_Skipped
+
+### 已知限制(v2 增量)
+
+- GUI 规则编辑器的 ComboBox 选项在快速输入时偶发失焦,改用 Tab 键切换可绕过
+- name_template 的 token 类型严格匹配(类型不符抛 ArgumentException),模板写错时无降级
+- Mappings UI 不支持拖拽排序,需先删再加
