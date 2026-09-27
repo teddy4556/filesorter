@@ -139,8 +139,9 @@ public partial class RuleEditor : Window
 
     private void BuildExtensionPanel(StackPanel stack)
     {
+        _selectedRule.Patterns ??= new();  // ensure non-null so MakeListBoxRow works
         stack.Children.Add(MakeListBoxRow("扩展名(如 jpg / pdf / txt)",
-            _selectedRule.Patterns ?? new(),
+            _selectedRule.Patterns,
             v => _selectedRule.Patterns = v,
             allowEmpty: true));
         stack.Children.Add(MakeDestinationRow());
@@ -148,12 +149,14 @@ public partial class RuleEditor : Window
 
     private void BuildFilenameKeywordPanel(StackPanel stack)
     {
+        _selectedRule.Patterns ??= new();
         stack.Children.Add(MakeListBoxRow("关键字(文件名包含)",
-            _selectedRule.Patterns ?? new(),
+            _selectedRule.Patterns,
             v => _selectedRule.Patterns = v,
             allowEmpty: true));
+        _selectedRule.Extensions ??= new();
         stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
-            _selectedRule.Extensions ?? new(),
+            _selectedRule.Extensions,
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
         stack.Children.Add(MakeBoolRow("区分大小写",
@@ -164,12 +167,14 @@ public partial class RuleEditor : Window
 
     private void BuildCombinedPanel(StackPanel stack)
     {
+        _selectedRule.Extension ??= new();
         stack.Children.Add(MakeListBoxRow("扩展名(如 pdf)",
-            _selectedRule.Extension ?? new(),
+            _selectedRule.Extension,
             v => _selectedRule.Extension = v,
             allowEmpty: true));
+        _selectedRule.FilenameKeyword ??= new();
         stack.Children.Add(MakeListBoxRow("关键字(文件名包含)",
-            _selectedRule.FilenameKeyword ?? new(),
+            _selectedRule.FilenameKeyword,
             v => _selectedRule.FilenameKeyword = v,
             allowEmpty: true));
         stack.Children.Add(MakeBoolRow("区分大小写",
@@ -180,8 +185,9 @@ public partial class RuleEditor : Window
 
     private void BuildPathTemplatePanel(StackPanel stack)
     {
+        _selectedRule.Extensions ??= new();
         stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
-            _selectedRule.Extensions ?? new(),
+            _selectedRule.Extensions,
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
         stack.Children.Add(MakeRow("文件名正则",
@@ -195,16 +201,19 @@ public partial class RuleEditor : Window
 
     private void BuildFilenamePatternPanel(StackPanel stack)
     {
+        _selectedRule.Extensions ??= new();
         stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
-            _selectedRule.Extensions ?? new(),
+            _selectedRule.Extensions,
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
+        _selectedRule.StartsWith ??= new();
         stack.Children.Add(MakeListBoxRow("以前缀开头(例如 Screenshot_)",
-            _selectedRule.StartsWith ?? new(),
+            _selectedRule.StartsWith,
             v => _selectedRule.StartsWith = v,
             allowEmpty: true));
+        _selectedRule.EndsWith ??= new();
         stack.Children.Add(MakeListBoxRow("以后缀结尾(例如 _final.pdf)",
-            _selectedRule.EndsWith ?? new(),
+            _selectedRule.EndsWith,
             v => _selectedRule.EndsWith = v,
             allowEmpty: true));
         stack.Children.Add(MakeBoolRow("区分大小写",
@@ -215,8 +224,9 @@ public partial class RuleEditor : Window
 
     private void BuildNameTemplatePanel(StackPanel stack)
     {
+        _selectedRule.Extensions ??= new();
         stack.Children.Add(MakeListBoxRow("扩展名(留空表示所有)",
-            _selectedRule.Extensions ?? new(),
+            _selectedRule.Extensions,
             v => _selectedRule.Extensions = v,
             allowEmpty: true));
         stack.Children.Add(MakeRow("命名模板(可填 {token[:type]})",
@@ -404,7 +414,8 @@ public partial class RuleEditor : Window
         addBtn.Click += (_, _) =>
         {
             items.Add("");
-            RebuildEditPanel();
+            RefreshListPanel();
+            onChange(items);
             UpdatePreview();
         };
         container.Children.Add(addBtn);
