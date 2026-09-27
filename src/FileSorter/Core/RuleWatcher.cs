@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using FileSorter.Core.Models;
 
 namespace FileSorter.Core;
