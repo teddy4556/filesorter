@@ -38,12 +38,15 @@ public static class RuleEngine
 
         foreach (var rule in cfg.Rules)
         {
+            // v2: skip inactive rules
+            if (!rule.Active) continue;
+
             switch (rule.Type)
             {
                 case "extension":
                     if (rule.Patterns != null && rule.Patterns.Any(p =>
                         string.Equals(p, ext, StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(cfg, rule, filePath, rule.Destination!);
+                        return DestResult(rule, rule.Destination!);
                     break;
 
                 case "filename_keyword":
@@ -52,7 +55,7 @@ public static class RuleEngine
                         name.Contains(p, rule.CaseSensitive == true
                             ? StringComparison.Ordinal
                             : StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(cfg, rule, filePath, rule.Destination!);
+                        return DestResult(rule, rule.Destination!);
                     break;
 
                 case "combined":
@@ -61,7 +64,7 @@ public static class RuleEngine
                         name.Contains(p, rule.CaseSensitive == true
                             ? StringComparison.Ordinal
                             : StringComparison.OrdinalIgnoreCase)))
-                        return DestResult(cfg, rule, filePath, rule.Destination!);
+                        return DestResult(rule, rule.Destination!);
                     break;
 
                 case "path_template":
@@ -70,17 +73,31 @@ public static class RuleEngine
                         return TemplateResult(cfg, rule, filePath, name);
                     break;
 
+                case "filename_pattern":
+                    // v2: starts_with / ends_with edge matching
+                    if (rule.Extensions != null && !rule.Extensions.Contains(ext)) break;
+                    if (MatchStartsWith(name, rule.StartsWith, rule.CaseSensitive == true))
+                        return DestResult(rule, rule.Destination!);
+                    if (MatchEndsWith(name, rule.EndsWith, rule.CaseSensitive == true))
+                        return DestResult(rule, rule.Destination!);
+                    break;
+
+                case "name_template":
+                    // v2: auto-regex from {token} placeholder + mapping-driven path
+                    if (MatchNameTemplate(cfg, rule, name, ext, out var ntResult))
+                        return ntResult;
+                    break;
+
                 case "default":
-                    return DestResult(cfg, rule, filePath, rule.Destination!);
+                    return DestResult(rule, rule.Destination!);
             }
         }
         return null;
     }
 
-    private static MatchResult DestResult(RulesConfig cfg, Rule rule, string filePath, string alias)
+    private static MatchResult DestResult(Rule rule, string alias)
     {
-        var basePath = ResolveAlias(cfg, alias);
-        return new MatchResult(rule.Name, basePath);
+        return new MatchResult(rule.Name, alias);
     }
 
     private static MatchResult TemplateResult(RulesConfig cfg, Rule rule, string filePath, string fileName)
@@ -104,6 +121,46 @@ public static class RuleEngine
             catch { return ""; }
         });
         return new MatchResult(rule.Name, result);
+    }
+
+    private static bool MatchStartsWith(string name, List<string>? patterns, bool caseSensitive)
+    {
+        if (patterns == null || patterns.Count == 0) return false;
+        var cmp = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        return patterns.Any(p => name.StartsWith(p, cmp));
+    }
+
+    private static bool MatchEndsWith(string name, List<string>? patterns, bool caseSensitive)
+    {
+        if (patterns == null || patterns.Count == 0) return false;
+        var cmp = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        return patterns.Any(p => name.EndsWith(p, cmp));
+    }
+
+    private static bool MatchNameTemplate(RulesConfig cfg, Rule rule, string fileName, string ext, out MatchResult? result)
+    {
+        result = null;
+        if (rule.Template == null) return false;
+
+        // Filter by extensions first (cheap)
+        if (rule.Extensions != null && rule.Extensions.Count > 0)
+        {
+            if (!rule.Extensions.Contains(ext)) return false;
+        }
+
+        // Compile template → regex
+        var regex = NameTemplateCompiler.CompileToRegex(rule.Template);
+        var m = System.Text.RegularExpressions.Regex.Match(fileName, regex);
+        if (!m.Success) return false;
+
+        var captured = new List<string>();
+        for (int i = 1; i < m.Groups.Count; i++) captured.Add(m.Groups[i].Value);
+
+        // Resolve destination via mappings
+        var baseDest = ResolveAlias(cfg, rule.Destination ?? "");
+        var path = NameTemplatePathBuilder.BuildPath(baseDest, rule.Template, rule.Mappings, captured);
+        result = new MatchResult(rule.Name, path);
+        return true;
     }
 
     private static string ResolveAlias(RulesConfig cfg, string alias)

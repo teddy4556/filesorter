@@ -122,4 +122,123 @@ public class RuleMatchTests
         Assert.NotNull(r);
         Assert.Equal(@"D:\cat\invoices", r!.DestinationPath);
     }
+
+    [Fact]
+    public void Match_FilenamePattern_StartsWith_GoesToDestination()
+    {
+        var cfg = new FileSorter.Core.Models.RulesConfig
+        {
+            Destinations = new() { ["docs"] = @"D:\cat\docs" },
+            Rules = new()
+            {
+                new()
+                {
+                    Name = "acme invoice",
+                    Type = "filename_pattern",
+                    StartsWith = new() { "acme_" },
+                    Extensions = new() { "pdf" },
+                    Destination = "docs"
+                }
+            }
+        };
+        var r = RuleEngine.Match(cfg, @"C:\in\acme_jan.pdf");
+        Assert.NotNull(r);
+        Assert.Equal(@"D:\cat\docs", r!.DestinationPath);
+    }
+
+    [Fact]
+    public void Match_FilenamePattern_EndsWith_GoesToDestination()
+    {
+        var cfg = new FileSorter.Core.Models.RulesConfig
+        {
+            Destinations = new() { ["docs"] = @"D:\cat\docs" },
+            Rules = new()
+            {
+                new()
+                {
+                    Name = "invoice",
+                    Type = "filename_pattern",
+                    EndsWith = new() { "_invoice.pdf" },
+                    Destination = "docs"
+                }
+            }
+        };
+        var r = RuleEngine.Match(cfg, @"C:\in\acme_invoice.pdf");
+        Assert.NotNull(r);
+        Assert.Equal(@"D:\cat\docs", r!.DestinationPath);
+    }
+
+    [Fact]
+    public void Match_NameTemplate_AutoRegex_GoesToMappingPath()
+    {
+        var cfg = new FileSorter.Core.Models.RulesConfig
+        {
+            Destinations = new() { ["images"] = @"D:\cat\img" },
+            Rules = new()
+            {
+                new()
+                {
+                    Name = "social",
+                    Type = "name_template",
+                    Extensions = new() { "jpg" },
+                    Template = "{platform}_@{author}",
+                    Mappings = new()
+                    {
+                        new() { Token = "{platform}", Level = 1 },
+                        new() { Token = "{author}", Level = 2 }
+                    },
+                    Destination = "images"
+                }
+            }
+        };
+        var r = RuleEngine.Match(cfg, @"C:\in\twitter_@hahaoy8_xxx.jpg");
+        Assert.NotNull(r);
+        Assert.Equal(@"D:\cat\img\twitter\hahaoy8", r!.DestinationPath);
+    }
+
+    [Fact]
+    public void Match_NameTemplate_NoMappings_FallsBack_To_Destination()
+    {
+        var cfg = new FileSorter.Core.Models.RulesConfig
+        {
+            Destinations = new() { ["images"] = @"D:\cat\img" },
+            Rules = new()
+            {
+                new()
+                {
+                    Name = "social flat",
+                    Type = "name_template",
+                    Extensions = new() { "jpg" },
+                    Template = "{platform}_@{author}",
+                    Mappings = null,
+                    Destination = "images"
+                }
+            }
+        };
+        var r = RuleEngine.Match(cfg, @"C:\in\twitter_@hahaoy8_xxx.jpg");
+        Assert.NotNull(r);
+        Assert.Equal(@"D:\cat\img", r!.DestinationPath);
+    }
+
+    [Fact]
+    public void Match_Skips_Inactive_Rule()
+    {
+        var cfg = new FileSorter.Core.Models.RulesConfig
+        {
+            Destinations = new() { ["img"] = @"D:\cat\img" },
+            Rules = new()
+            {
+                new()
+                {
+                    Name = "disabled",
+                    Type = "extension",
+                    Patterns = new() { "jpg" },
+                    Destination = "img",
+                    Active = false
+                }
+            }
+        };
+        var r = RuleEngine.Match(cfg, @"C:\in\test.jpg");
+        Assert.Null(r);  // Inactive rule should NOT match
+    }
 }
