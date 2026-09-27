@@ -8,6 +8,6 @@ public class RulesConfig
     [YamlMember(Alias = "default_action")] public string DefaultAction { get; set; } = "move";
     [YamlMember(Alias = "conflict_strategy")] public string ConflictStrategy { get; set; } = "rename";
     [YamlMember(Alias = "log_level")] public string LogLevel { get; set; } = "info";
-    [YamlMember(Alias = "destinations")] public Dictionary<string, string> Destinations { get; set; } = null!;
-    [YamlMember(Alias = "rules")] public List<Rule> Rules { get; set; } = null!;
+    [YamlMember(Alias = "destinations", IgnoreNullValues = true)] public Dictionary<string, string> Destinations { get; set; } = null!;
+    [YamlMember(Alias = "rules", IgnoreNullValues = true)] public List<Rule> Rules { get; set; } = null!;
 }

@@ -5,7 +5,9 @@ namespace FileSorter.Core;
 
 public static class RuleEngine
 {
-    private static readonly IDeserializer _yaml = new DeserializerBuilder()
+    // YamlDotNet 15.x has a thread-safety bug with Dictionary + [YamlMember(Alias)].
+    // Workaround: build a fresh deserializer per call so state never persists across invocations.
+    private static IDeserializer BuildDeserializer() => new DeserializerBuilder()
         .IgnoreUnmatchedProperties()
         .Build();
 
@@ -13,7 +15,7 @@ public static class RuleEngine
     {
         if (string.IsNullOrWhiteSpace(yaml))
             throw new ArgumentException("YAML is empty", nameof(yaml));
-        var cfg = _yaml.Deserialize<RulesConfig>(yaml)
+        var cfg = BuildDeserializer().Deserialize<RulesConfig>(yaml)
             ?? throw new InvalidDataException("YAML deserialized to null");
         if (cfg.Version == 0) cfg.Version = 1;
         // YamlDotNet 15.x has a bug with Dictionary + [YamlMember(Alias)] — the alias
