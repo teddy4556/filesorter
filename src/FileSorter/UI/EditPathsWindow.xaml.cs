@@ -24,8 +24,7 @@ public partial class EditPathsWindow : Window
         var cfg = RuleEngine.LoadFromFile(rulesPath);
         foreach (var kv in cfg.Destinations)
             Rows.Add(new PathRow { Name = kv.Key, Path = kv.Value });
-        Rows.CollectionChanged += (_, _) => { };
-        ((ItemsControl)FindName("Rows"))!.ItemsSource = Rows;
+        DataContext = this;  // Binding: XAML ItemsSource="{Binding Rows}"
     }
 
     private void OnBrowse(object sender, RoutedEventArgs e)
