@@ -41,6 +41,7 @@
 | 内存占用 | < 50MB(常驻) |
 | exe 体积 | < 15MB(单文件,无外部依赖) |
 | 多级目录支持 | twitter 文件名 → 自动分到 `D:\分类\图片\twitter\@hahaoy8\` |
+| 文件夹拖入 | 拖入文件夹时弹"递归/顶层/取消"对话框,不能静默处理 |
 
 ---
 
@@ -259,6 +260,27 @@ FileAction.Move/Copy(src, dest)
 
 **不做的事**:不在窗口里加新规则、删规则、改正则——这些还是手改 YAML。
 
+### 4.5 拖入文件夹对话框
+
+**触发场景**:悬浮窗拖入或右键"发送到"包含**目录**(而非纯文件)。
+
+**对话框内容**:
+- 标题:"FileSorter - 拖入了文件夹"
+- 副文本:"<路径>(N 个文件,M 个子文件夹)"
+- 三个按钮:
+  - **递归处理所有文件** — 遍历文件夹 + 所有子文件夹内的每个文件,逐个匹配规则
+  - **只处理顶层文件** — 只处理这个文件夹根目录的文件,子文件夹不动
+  - **取消**
+
+**"递归处理"的语义**:
+- 用 `Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)` 拿所有子文件
+- 空文件夹 / 隐藏文件(以 `.` 开头)按 `extensions` 过滤(无扩展名的目录不参与)
+- 不删除原文件夹(只移动文件,不动目录结构)
+
+**右键 SendTo 路径与拖入文件夹路径一致**:SendTo 把目录传进来时也走同一逻辑。
+
+**不做的事**:不实现"按扩展名分流"(即"只递归 .jpg")——粒度就是文件 vs 文件夹两个选项。
+
 ---
 
 ## 5. 错误处理
@@ -269,7 +291,7 @@ FileAction.Move/Copy(src, dest)
 | 目标目录不存在 | 自动创建(单层),多层失败则报错跳过 |
 | 源文件被占用 | 跳过,记录日志,提示用户 |
 | 目标已有同名文件 | 按 conflict_strategy(skip/overwrite/rename)处理 |
-| 拖入文件夹 | 递归遍历内部文件,逐个匹配规则 |
+| 拖入文件夹 | 弹"递归/顶层/取消"对话框(见 §4.5) |
 | 规则无匹配 | 走 default 规则,或复制到 inbox |
 | 磁盘空间不足 | 报错并提示,不清空原文件 |
 
@@ -342,6 +364,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 | M9: 开机自启动 | `--install` / `--uninstall` 命令 + 注册表读写 | 注册表项存在 + 重启后自动起 |
 | M10: 路径模板规则 | path_template 类型 + 正则抽取 + 多级目录 | twitter 文件分到 `D:\分类\图片\twitter\@hahaoy8\` |
 | M11: 路径编辑 GUI | EditPathsWindow + OpenFolderDialog + 原子保存 | 改一个路径 → 保存 → 2 秒内规则生效 |
+| M12: 文件夹对话框 | 拖入文件夹时弹"递归/顶层/取消"对话框 | 拖入 10 个文件的文件夹 → 看到 3 选项对话框 |
 
 ---
 
@@ -359,3 +382,4 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 - 2026-09-27 修订:加入 §2.4 开机自启动(HKCU\...\Run)+ M9,移除原"不做开机自启动"项
 - 2026-09-27 修订:加入 §3.3 path_template 规则类型(支持正则抽取 + 多级目录)+ M10,演示 twitter 例
 - 2026-09-27 修订:加入 §4.4 EditPathsWindow 最小化 GUI(只改 destinations 路径)+ M11,§1.2 排除项微调
+- 2026-09-27 修订:加入 §4.5 拖入文件夹对话框(递归/顶层/取消)+ M12
