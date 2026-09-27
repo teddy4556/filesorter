@@ -38,6 +38,7 @@
 | 规则改完到生效 | < 2 秒(热加载,无需重启软件) |
 | 内存占用 | < 50MB(常驻) |
 | exe 体积 | < 15MB(单文件,无外部依赖) |
+| 多级目录支持 | twitter 文件名 → 自动分到 `D:\分类\图片\twitter\@hahaoy8\` |
 
 ---
 
@@ -112,7 +113,7 @@ destinations:
   inbox: D:\分类\未分类          # catch-all,放最后
 
 rules:
-  # 规则 1:扩展名匹配
+  # 规则 1:扩展名匹配 → 一级目的地
   - name: 图片分类
     type: extension
     patterns: [jpg, jpeg, png, gif, bmp, webp, svg]
@@ -133,29 +134,59 @@ rules:
     filename_keyword: ["screenshot", "截图", "screen"]
     destination: images
 
-  # 规则 4:catch-all
+  # 规则 4:路径模板(支持多级目录)
+  # 文件名:twitter_(@hahaoy8)_肉丝儿_20260730-085445_2082751743373496825.jpg
+  # 目标:D:\分类\图片\twitter\@hahaoy8\<原文件名>
+  - name: 社交媒体图片
+    type: path_template
+    extensions: [jpg, jpeg, png, gif, webp]
+    filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'   # 正则,捕获组 1=平台,捕获组 2=作者
+    path: '{destinations.images}\{1}\{2}'         # 引用捕获组 + destinations 别名
+    # 可用 token:{date:yyyy-MM} / {ext} / {filename} / {stem} 等
+    destination_alias: images                     # 路径别名(可选,纯引用)
+
+  # 规则 5:catch-all
   - name: 其他
     type: default
     destination: inbox
 ```
 
-### 3.3 匹配优先级
+### 3.3 路径模板(path_template 专属)
+
+支持的 token:
+
+| Token | 含义 | 例 |
+|---|---|---|
+| `{filename}` | 完整文件名(含扩展名)| `twitter_(@hahaoy8)_...jpg` |
+| `{stem}` | 不含扩展名的文件名 | `twitter_(@hahaoy8)_肉丝儿_20260730-...` |
+| `{ext}` | 仅扩展名(小写,不带点)| `jpg` |
+| `{date:yyyy-MM}` | 文件修改日期 | `2026-07` |
+| `{date:yyyy}` | 年份 | `2026` |
+| `{N}` | 正则捕获组(从 1 开始) | `\1` `\2` |
+| `{destinations.<name>}` | 引用 destinations 别名 | `{destinations.images}` |
+
+**多级目录**:用 `\`(Windows)或 `/`(跨平台)分隔。模板里出现几级 `\` 就是几级目录。
+
+### 3.4 匹配优先级
 
 按 rules 列表**自上而下**匹配,**第一个命中即停止**。catch-all 规则放最后。
 
-### 3.4 热加载机制
+**path_template 命中条件**:`filename_pattern` 正则必须匹配 + `extensions` 列表必须包含扩展名。
+
+### 3.5 热加载机制
 
 - 程序启动时加载 rules.yaml
 - FileSystemWatcher 监听 rules.yaml 文件变更
 - 文件变更后 **2 秒内重载**(防编辑器保存中途读取)
 - 重载失败时保留旧规则 + 弹气泡"规则加载失败,已保留旧版本"
 
-### 3.5 手改友好性
+### 3.6 手改友好性
 
 - YAML 注释 `#` 开头
 - 缩进 2 空格
-- 字段名固定 6 个:type / patterns / extension / filename_keyword / destination / case_sensitive
+- 字段名固定 9 个:type / patterns / extension / filename_keyword / filename_pattern / path / extensions / destination / destination_alias / case_sensitive
 - 错误信息带行号(用 YamlDotNet 内置报错)
+- 正则测试可用 https://regex101.com/?flavor=dotnet 先验证
 
 ---
 
@@ -288,6 +319,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 | M7: SendTo 集成 | 写快捷方式到 SendTo | 右键菜单出现 |
 | M8: 端到端验证 | 全流程手动跑通 | 用户签字 |
 | M9: 开机自启动 | `--install` / `--uninstall` 命令 + 注册表读写 | 注册表项存在 + 重启后自动起 |
+| M10: 路径模板规则 | path_template 类型 + 正则抽取 + 多级目录 | twitter 文件分到 `D:\分类\图片\twitter\@hahaoy8\` |
 
 ---
 
@@ -303,3 +335,4 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 
 - 2026-09-27 初版(M1 完成,待用户最终评审)
 - 2026-09-27 修订:加入 §2.4 开机自启动(HKCU\...\Run)+ M9,移除原"不做开机自启动"项
+- 2026-09-27 修订:加入 §3.3 path_template 规则类型(支持正则抽取 + 多级目录)+ M10,演示 twitter 例
