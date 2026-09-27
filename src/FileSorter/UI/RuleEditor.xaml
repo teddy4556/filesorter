@@ -56,7 +56,7 @@
                     <Border Grid.Row="1" Background="#F5F5F5" Padding="8" Margin="0,8,0,0" CornerRadius="3">
                         <StackPanel>
                             <DockPanel LastChildFill="True">
-                                <TextBlock Text="测试输入:" VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,4,0" FontWeight="FontWeights.SemiBold" />
+                                <TextBlock Text="测试输入:" VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,4,0" FontWeight="SemiBold" />
                                 <TextBlock Text="(纯文件名或完整路径)" VerticalAlignment="Center" Foreground="Gray" DockPanel.Dock="Right" />
                             </DockPanel>
                             <TextBox x:Name="PreviewInputBox"
