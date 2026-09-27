@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 
 namespace FileSorter.UI;
@@ -13,7 +12,7 @@ public class TrayIcon : IDisposable
     {
         _notify = new NotifyIcon
         {
-            Icon = LoadIcon(),
+            Icon = SystemIcons.Application,  // WPF apps: Assembly.Location is null in XAML entry; use system default
             Visible = true,
             Text = "FileSorter"
         };
@@ -35,13 +34,6 @@ public class TrayIcon : IDisposable
     }
 
     public event Action? EditPathsRequested;
-
-    private static Icon LoadIcon()
-    {
-        // Minimal: use system app icon; replace with embedded icon later.
-        return Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location)
-            ?? SystemIcons.Application;
-    }
 
     public void Dispose()
     {
