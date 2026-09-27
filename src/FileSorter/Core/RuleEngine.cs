@@ -1,3 +1,4 @@
+using System.IO;
 using FileSorter.Core.Models;
 using YamlDotNet.Serialization;
 
@@ -149,19 +150,71 @@ public static class RuleEngine
             if (!rule.Extensions.Contains(ext)) return false;
         }
 
-        // Compile template → regex
-        var regex = NameTemplateCompiler.CompileToRegex(rule.Template);
-        var m = System.Text.RegularExpressions.Regex.Match(fileName, regex);
+        // CRITICAL FIX: stem-only match.
+        // The compiled regex anchors ^...$, so we must strip the file extension from the
+        // filename before matching. Done unconditionally — even when the template contains
+        // a literal "." (e.g. "{title}.{ext}"), we still match against the stem and supply
+        // the captured {ext} from `ext` (the fileName's actual extension).
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var rawRegex = NameTemplateCompiler.CompileToRegex(rule.Template);
+
+        // If the template's last group is a literal "." followed by an {ext} token, strip
+        // that suffix from the regex (since the stem no longer has the extension) and
+        // we'll inject the real extension as the captured value for the {ext} group.
+        var regexForStem = StripTrailingExtFromRegex(rawRegex, out bool strippedExtGroup);
+
+        var m = System.Text.RegularExpressions.Regex.Match(stem, regexForStem);
         if (!m.Success) return false;
 
         var captured = new List<string>();
         for (int i = 1; i < m.Groups.Count; i++) captured.Add(m.Groups[i].Value);
+
+        // If we stripped the {ext} capture group from the regex, inject the real extension
+        // so the downstream NameTemplatePathBuilder sees the same number of captures.
+        if (strippedExtGroup)
+        {
+            captured.Add(ext);
+        }
 
         // Resolve destination via mappings
         var baseDest = ResolveAlias(cfg, rule.Destination ?? "");
         var path = NameTemplatePathBuilder.BuildPath(baseDest, rule.Template, rule.Mappings, captured);
         result = new MatchResult(rule.Name, path);
         return true;
+    }
+
+    /// <summary>
+    /// If `regex` ends with `\.(&lt;ext-group&gt;)(?:\s\(\d+\))?$`, remove that trailing
+    /// `.({ext})` literal+group from the regex so it can match the stem (which has no
+    /// extension). Returns the new regex string and sets `strippedExtGroup=true` if a
+    /// group was removed.
+    ///
+    /// Why: a template like "{title}.{ext}" compiles to e.g.
+    ///   ^([a-zA-Z0-9._-]+)\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$
+    /// After we strip ".jpg" from the filename, the stem has no trailing ".ext", so the
+    /// raw regex won't match. We rewrite to:
+    ///   ^([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$
+    /// and remember that one group was dropped — MatchNameTemplate then synthesizes the
+    /// {ext} capture from the actual fileName extension.
+    /// </summary>
+    private static string StripTrailingExtFromRegex(string regex, out bool strippedExtGroup)
+    {
+        strippedExtGroup = false;
+        // Expect pattern: ^(captures...)\.(<ext>)(?:\s\(\d+\))?$
+        // The compiler always emits (?:\s\(\d+\))?$ as the final suffix.
+        const string suffix = @"(?:\s\(\d+\))?$";
+        if (!regex.EndsWith(suffix)) return regex;
+        // Strip the suffix to peek at the preceding char group
+        var inner = regex.Substring(0, regex.Length - suffix.Length);
+        // inner now ends with `)`. Find the matching `(`. The trailing token group is
+        // `\.([a-zA-Z0-9._-]+)` so we look for the pattern "\.(<group>)" at the end.
+        // For simplicity, find the last occurrence of "\.("
+        int idxLiteralDot = inner.LastIndexOf(@"\.(", StringComparison.Ordinal);
+        if (idxLiteralDot < 0) return regex;
+        // Strip from "\." onwards and reattach the suffix.
+        var rebuilt = inner.Substring(0, idxLiteralDot) + suffix;
+        strippedExtGroup = true;
+        return rebuilt;
     }
 
     private static string ResolveAlias(RulesConfig cfg, string alias)

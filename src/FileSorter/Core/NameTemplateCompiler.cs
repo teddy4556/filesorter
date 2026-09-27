@@ -43,7 +43,7 @@ public static class NameTemplateCompiler
                 i++;
             }
         }
-        sb.Append('$');
+        sb.Append(@"(?:\s\(\d+\))?$");
         return sb.ToString();
     }
 

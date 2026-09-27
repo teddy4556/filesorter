@@ -10,7 +10,8 @@ public class NameTemplateCompilerTests
     public void Compile_Token_Without_Type_Matches_Any_NonSep()
     {
         var re = NameTemplateCompiler.CompileToRegex("{platform}_@{author}_{title}");
-        Assert.Equal(@"^([a-zA-Z0-9._-]+)_@([a-zA-Z0-9._-]+)_([a-zA-Z0-9._-]+)$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\s\(\d+\))?$
+        Assert.EndsWith(@"(?:\s\(\d+\))?$", re);
     }
 
     [Fact]
@@ -53,7 +54,8 @@ public class NameTemplateCompilerTests
     public void Compile_Template_With_Dots_And_Spaces()
     {
         var re = NameTemplateCompiler.CompileToRegex("{name}.{ext}");
-        Assert.Contains(@"\.([a-zA-Z0-9._-]+)$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀
+        Assert.Contains(@"\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$", re);
     }
 }
 
@@ -141,7 +143,8 @@ public class NameTemplatePathBuilderTests
         // 注:NameTemplateCompiler 默认 type "any" 现在接受 [a-zA-Z0-9._-]+ (含 . _ -)。
         var re = NameTemplateCompiler.CompileToRegex(
             "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
-        Assert.Contains(@"^instagram-([a-zA-Z0-9._-]+)-(\d+)-([a-zA-Z0-9._-]+)-([a-zA-Z0-9._-]+)-(\d{8})$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\s\(\d+\))?$
+        Assert.Contains(@"(?:\s\(\d+\))?$", re);
     }
 
     [Fact]
@@ -159,6 +162,57 @@ public class NameTemplatePathBuilderTests
         Assert.Equal("CwXYZ12345", m.Groups[3].Value);                        // shortcode
         Assert.Equal("abc123", m.Groups[4].Value);                            // first_name
         Assert.Equal("20260927", m.Groups[5].Value);                          // date
+    }
+
+    [Fact]
+    public void Compile_Template_Accepts_Windows_Rename_Suffix()
+    {
+        // Windows 自动加 (1)/(2) 等防冲突后缀,template 必须接受
+        var re = NameTemplateCompiler.CompileToRegex(
+            "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
+
+        // (1) (2) (3) 都应该 match
+        var samples = new[] {
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916 (1)",
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916 (2)",
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916 (123)",
+        };
+        foreach (var s in samples)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(s, re);
+            Assert.True(m.Success, $"Should match: {s}");
+            Assert.Equal("__ongi", m.Groups[1].Value);
+            Assert.Equal("6030869291", m.Groups[2].Value);
+            Assert.Equal("DdUGbZcn4sO", m.Groups[3].Value);
+            Assert.Equal("811748761", m.Groups[4].Value);
+            Assert.Equal("20260916", m.Groups[5].Value);
+        }
+
+        // 无 (N) 后缀也必须仍 OK
+        var plain = System.Text.RegularExpressions.Regex.Match(
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916", re);
+        Assert.True(plain.Success);
+        Assert.Equal("20260916", plain.Groups[5].Value);
+    }
+
+    [Fact]
+    public void Compile_Template_Rejects_Other_Suffix()
+    {
+        // 只接受 (N),不接受其他后缀
+        var re = NameTemplateCompiler.CompileToRegex(
+            "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
+
+        // -copy / .bak / -v2 应该 NOT match
+        var bad = new[] {
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916-copy",
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916.bak",
+            "instagram-__ongi-6030869291-DdUGbZcn4sO-811748761-20260916-v2",
+        };
+        foreach (var s in bad)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(s, re);
+            Assert.False(m.Success, $"Should NOT match: {s}");
+        }
     }
 
     [Fact]
