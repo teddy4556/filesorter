@@ -61,7 +61,7 @@ public class RuleEngineLoadTests
         var r = cfg.Rules[0];
         Assert.Equal("path_template", r.Type);
         Assert.Equal(new[] { "jpg", "png" }, r.Extensions);
-        Assert.Equal(@"^([a-z]+)_(@([^)]+))_", r.FilenamePattern);
+        Assert.Equal(@"^([a-z]+)_\(@([^)]+)\)_", r.FilenamePattern);
         Assert.Equal(@"{destinations.images}\{1}\{2}", r.Path);
     }
 }

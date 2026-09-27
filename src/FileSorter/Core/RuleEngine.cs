@@ -7,7 +7,6 @@ public static class RuleEngine
 {
     private static readonly IDeserializer _yaml = new DeserializerBuilder()
         .IgnoreUnmatchedProperties()
-        .WithCaseInsensitivePropertyMatching()
         .Build();
 
     public static RulesConfig LoadFromString(string yaml)
@@ -17,6 +16,8 @@ public static class RuleEngine
         var cfg = _yaml.Deserialize<RulesConfig>(yaml)
             ?? throw new InvalidDataException("YAML deserialized to null");
         if (cfg.Version == 0) cfg.Version = 1;
+        cfg.Destinations ??= new();
+        cfg.Rules ??= new();
         return cfg;
     }
 
