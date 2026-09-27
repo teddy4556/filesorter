@@ -1,0 +1,74 @@
+# FileSorter — 全规则类型示例
+#
+# 复制这个文件到 %APPDATA%\FileSorter\rules.yaml,
+# 然后改 destinations 里的路径为你的实际路径。
+#
+# 默认分类路径示例:
+#   D:\示例\图片
+#   D:\示例\文档
+#   D:\示例\压缩包
+#   D:\示例\视频
+#   D:\示例\未分类
+
+version: 1
+default_action: move          # move | copy
+conflict_strategy: rename     # rename | overwrite | skip
+log_level: info               # debug | info | warning | error
+
+destinations:
+  images: D:\示例\图片
+  documents: D:\示例\文档
+  archives: D:\示例\压缩包
+  videos: D:\示例\视频
+  inbox: D:\示例\未分类        # catch-all,放最后
+
+rules:
+
+  # ===== 类型 A:扩展名 =====
+  - name: 图片
+    type: extension
+    patterns: [jpg, jpeg, png, gif, bmp, webp, svg]
+    destination: images
+
+  - name: 压缩包
+    type: extension
+    patterns: [zip, rar, 7z, tar, gz, bz2]
+    destination: archives
+
+  - name: 视频
+    type: extension
+    patterns: [mp4, mkv, mov, avi, webm]
+    destination: videos
+
+  # ===== 类型 B:文件名关键字(子串匹配) =====
+  - name: 发票
+    type: filename_keyword
+    patterns: ["发票", "invoice", "receipt"]
+    case_sensitive: false
+    extensions: [pdf, jpg, png]   # 可选:同时限定扩展名
+    destination: documents
+
+  # ===== 类型 C:扩展名 + 关键字同时满足(combined) =====
+  - name: 截图
+    type: combined
+    extension: [png, jpg]
+    filename_keyword: ["screenshot", "截图", "screen"]
+    destination: images
+
+  # ===== 类型 D:正则抽取 + 多级目录(path_template) =====
+  #
+  # 例:文件名 `twitter_(@hahaoy8)_肉丝儿_20260730.jpg`
+  #   group 1 = twitter (平台)
+  #   group 2 = hahaoy8 (作者,不含 @)
+  # → D:\示例\图片\twitter\@hahaoy8\
+  #
+  - name: 社交媒体图片
+    type: path_template
+    extensions: [jpg, jpeg, png, gif, webp]
+    filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
+    path: '{destinations.images}\{1}\@{2}'   # \{1}=平台, \@=字面 @, \{2}=作者
+
+  # ===== 类型 E:catch-all(必须放最后) =====
+  - name: 其他
+    type: default
+    destination: inbox

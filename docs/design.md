@@ -67,7 +67,7 @@
 
 Windows 资源管理器右键菜单 → "发送到" 子菜单 → "FileSorter"
 
-**实现**:在 `C:\Users\yaoyx\SendTo\` 目录创建快捷方式指向 `filesorter.exe`。SendTo 是 Windows 系统识别的"发送到"菜单目录,放快捷方式即可,无需写 shell extension。
+**实现**:在 `C:\Users\<你的用户名>\SendTo\` 目录创建快捷方式指向 `filesorter.exe`。SendTo 是 Windows 系统识别的"发送到"菜单目录,放快捷方式即可,无需写 shell extension。
 
 **简化决策**:不用写真正的 shell extension(复杂且要注册 COM),用 SendTo 目录的快捷方式是 Windows 原生支持的等价方案。
 

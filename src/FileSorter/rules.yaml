@@ -4,10 +4,11 @@ conflict_strategy: rename
 log_level: info
 
 destinations:
-  images: D:\分类\图片
-  documents: D:\分类\文档
-  archives: D:\分类\压缩包
-  inbox: D:\分类\未分类
+  # ↓↓↓ 改成你自己的实际路径 ↓↓↓
+  images: D:\示例\图片
+  documents: D:\示例\文档
+  archives: D:\示例\压缩包
+  inbox: D:\示例\未分类
 
 rules:
   - name: 社交媒体图片
