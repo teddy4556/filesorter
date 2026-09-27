@@ -54,7 +54,7 @@ public class RuleEngineLoadTests
           - name: sm-pic
             type: path_template
             extensions: [jpg, png]
-            filename_pattern: '^([a-z]+)_(@([^)]+))_'
+            filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
             path: '{destinations.images}\{1}\{2}'
         """;
         var cfg = RuleEngine.LoadFromString(yaml);
