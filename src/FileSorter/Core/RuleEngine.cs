@@ -16,7 +16,9 @@ public static class RuleEngine
         var cfg = _yaml.Deserialize<RulesConfig>(yaml)
             ?? throw new InvalidDataException("YAML deserialized to null");
         if (cfg.Version == 0) cfg.Version = 1;
-        cfg.Destinations ??= new();
+        // YamlDotNet 15.x has a bug with Dictionary + [YamlMember(Alias)] — the alias
+        // deserializer reuses the same Dictionary instance and corrupts it. Replace with fresh one.
+        cfg.Destinations = new Dictionary<string, string>(cfg.Destinations ?? new());
         cfg.Rules ??= new();
         return cfg;
     }

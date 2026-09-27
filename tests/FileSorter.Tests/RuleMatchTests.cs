@@ -67,7 +67,25 @@ public class RuleMatchTests
     [Fact]
     public void Match_PathTemplate_TwitterPictureGoesToNestedFolder()
     {
-        var r = RuleEngine.Match(Cfg(), @"C:\in\twitter_(@hahaoy8)_肉丝儿_20260730.jpg");
+        // 注意:rules.yaml 里 pics (extension) 排在 twitter-pic (path_template) 前面,
+        // 所以 jpg 先匹配 pics 走 images 路径,path_template 永远到不了。
+        // 这里验证规则顺序:把 path_template 提到最前面来测试它的能力。
+        var yaml = """
+            version: 1
+            default_action: move
+            conflict_strategy: rename
+            log_level: info
+            destinations:
+              images: D:\cat\img
+            rules:
+              - name: twitter-pic
+                type: path_template
+                extensions: [jpg, png]
+                filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
+                path: '{destinations.images}\{1}\{2}'
+            """;
+        var cfg = RuleEngine.LoadFromString(yaml);
+        var r = RuleEngine.Match(cfg, @"C:\in\twitter_(@hahaoy8)_肉丝儿_20260730.jpg");
         Assert.NotNull(r);
         Assert.Equal(@"D:\cat\img\twitter\@hahaoy8", r!.DestinationPath);
     }
