@@ -184,38 +184,55 @@ public static class RuleEngine
     }
 
     /// <summary>
-    /// If `regex` ends with `\.(&lt;ext-group&gt;)(?:\s\(\d+\))?$`, remove that trailing
-    /// `.({ext})` literal+group from the regex so it can match the stem (which has no
-    /// extension). Returns the new regex string and sets `strippedExtGroup=true` if a
-    /// group was removed.
-    ///
-    /// Why: a template like "{title}.{ext}" compiles to e.g.
-    ///   ^([a-zA-Z0-9._-]+)\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$
-    /// After we strip ".jpg" from the filename, the stem has no trailing ".ext", so the
-    /// raw regex won't match. We rewrite to:
-    ///   ^([a-zA-Z0-9._-]+)(?:\s\(\d+\))?$
-    /// and remember that one group was dropped — MatchNameTemplate then synthesizes the
-    /// {ext} capture from the actual fileName extension.
-    /// </summary>
-    private static string StripTrailingExtFromRegex(string regex, out bool strippedExtGroup)
-    {
-        strippedExtGroup = false;
-        // Expect pattern: ^(captures...)\.(<ext>)(?:\s\(\d+\))?$
-        // The compiler always emits (?:\s\(\d+\))?$ as the final suffix.
-        const string suffix = @"(?:\s\(\d+\))?$";
-        if (!regex.EndsWith(suffix)) return regex;
-        // Strip the suffix to peek at the preceding char group
-        var inner = regex.Substring(0, regex.Length - suffix.Length);
-        // inner now ends with `)`. Find the matching `(`. The trailing token group is
-        // `\.([a-zA-Z0-9._-]+)` so we look for the pattern "\.(<group>)" at the end.
-        // For simplicity, find the last occurrence of "\.("
-        int idxLiteralDot = inner.LastIndexOf(@"\.(", StringComparison.Ordinal);
-        if (idxLiteralDot < 0) return regex;
-        // Strip from "\." onwards and reattach the suffix.
-        var rebuilt = inner.Substring(0, idxLiteralDot) + suffix;
-        strippedExtGroup = true;
-        return rebuilt;
-    }
+        /// If `regex` ends with `\.(<ext-group>)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$`, remove that trailing
+        /// `.{ext}` literal+group from the regex so it can match the stem (which has no extension).
+        /// Returns the new regex string and sets `strippedExtGroup=true` if a group was removed.
+        ///
+        /// Why: a template like "{title}.{ext}" compiles to e.g.
+        ///   ^([a-zA-Z0-9._-]+)\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$
+        /// After we strip ".jpg" from the filename, the stem has no trailing ".ext", so the
+        /// raw regex won't match. We rewrite to drop both the .({ext}) group and the
+        /// dedup/rename suffixes:
+        ///   ^([a-zA-Z0-9._-]+)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$
+        /// and remember that one group was dropped — MatchNameTemplate then synthesizes the
+        /// {ext} capture from the actual fileName extension.
+        /// </summary>
+        private static string StripTrailingExtFromRegex(string regex, out bool strippedExtGroup)
+                {
+                    strippedExtGroup = false;
+                    // v2.7+ Bug #52: Regex always ends with `(?:-\d+(_\d+)*)?$` (after `<ext>` group close),
+                    //   so look for the LAST occurrence of that suffix, not EndsWith.
+                    // Pattern: ^captures...\.(<ext>)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$
+                    const string dedupSuffix = @"(?:-\d+(_\d+)*)?$";
+                    const string renameSuffix = @"(?:\s\(\d+\))?";
+
+                    int idxDedup = regex.LastIndexOf(dedupSuffix, StringComparison.Ordinal);
+                    if (idxDedup < 0) return regex;
+                    // The portion BEFORE the dedup suffix must end with the rename suffix (or directly with
+                    // a close-paren — meaning no rename suffix was emitted because the file didn't have it).
+                    var beforeDedup = regex.Substring(0, idxDedup);
+                    int idxRename = beforeDedup.LastIndexOf(renameSuffix, StringComparison.Ordinal);
+                    int idxLiteralDot;
+                    string inner;
+                    if (idxRename >= 0 && idxRename + renameSuffix.Length == beforeDedup.Length)
+                    {
+                        // rename suffix was present
+                        inner = beforeDedup.Substring(0, idxRename);
+                    }
+                    else
+                    {
+                        // no rename suffix — use the whole beforeDedup as inner
+                        inner = beforeDedup;
+                    }
+                    // Find `\.(` in inner. The trailing token group is `\.[a-zA-Z0-9._-]+)`.
+                    idxLiteralDot = inner.LastIndexOf(@"\.(", StringComparison.Ordinal);
+                    if (idxLiteralDot < 0) return regex;
+                    // Strip from `\.` onwards; reattach ONLY the dedup suffix + anchor (rename suffix was
+                    // already gone if it existed in the original).
+                    var rebuilt = inner.Substring(0, idxLiteralDot) + dedupSuffix;
+                    strippedExtGroup = true;
+                    return rebuilt;
+                }
 
     private static string ResolveAlias(RulesConfig cfg, string alias)
     {

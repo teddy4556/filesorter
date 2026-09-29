@@ -161,4 +161,95 @@ public class RuleEndToEndTests
             _ = r;
         }
     }
+
+    // v2.7.2 Bug #52: StripTrailingExtFromRegex used EndsWith(dedupSuffix) which failed because
+    //   the actual regex ends with `...([any]+)(?:-\d+(_\d+)*)?$` — the `)` between group close
+    //   and the dedup suffix meant EndsWith never matched, so the trailing .{ext} group was NEVER
+    //   stripped, so the regex anchored at `$` never matched the stem (which has no extension).
+    //   Fix uses LastIndexOf. This E2E test exercises the FULL Match() → MatchNameTemplate →
+    //   StripTrailingExtFromRegex → stem-match path with the EXACT production Weibo rule.
+    [Fact]
+    public void E2E_Bug52_Weibo_NameTemplate_StripsExtension()
+    {
+        // The exact rule from the user's rules.yaml (do not modify; this is the regression case).
+        var cfg = RuleEngine.LoadFromString("""
+            version: 1
+            default_action: move
+            conflict_strategy: rename
+            log_level: info
+            destinations:
+              weibo: D:\默认保存\下载\下载（待整理）\自动分类\DCIM\微博
+            rules:
+              - name: 微博
+                type: name_template
+                active: true
+                mappings:
+                  - token: '{username}'
+                    level: 1
+                extensions: [jpg, jpeg, png, mp4, webp]
+                template: 微博-{username:unicode}-{date:yyyyMMdd}-{index}.{ext}
+                destination: weibo
+            """);
+
+        // Real test file 1: 清补凉好好吃 (Chinese username)
+        // NameTemplatePathBuilder emits a DIRECTORY only (mappings → subdirs), so DestinationPath
+        // does NOT include the extension. Assert on the directory shape + verify the rule actually
+        // extracted username correctly (not falling through to "其他" / a different rule).
+        var r1 = RuleEngine.Match(cfg, @"D:\hermes-工作目录\filesorter\test-tweets\微博-清补凉好好吃-20260922-10.mp4");
+        Assert.NotNull(r1);
+        Assert.Equal("微博", r1!.RuleName);
+        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\自动分类\DCIM\微博\清补凉好好吃", r1.DestinationPath);
+
+        // Real test file 2: 宋小睿爱唱歌 (Chinese username, jpg extension)
+        var r2 = RuleEngine.Match(cfg, @"D:\hermes-工作目录\filesorter\test-tweets\微博-宋小睿爱唱歌-20260926-4.jpg");
+        Assert.NotNull(r2);
+        Assert.Equal("微博", r2!.RuleName);
+        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\自动分类\DCIM\微博\宋小睿爱唱歌", r2.DestinationPath);
+    }
+
+    // v2.7.5 Bug #56: Twitter rule with `unicode-dash` type for display names containing spaces
+    //   + ASCII parens like '饼干姐姐 (FortuneCutie00)' or 'bruce love you'. The RuleEngine's
+    //   MatchNameTemplate path must extract the user_name correctly (with space + parens intact).
+    [Fact]
+    public void E2E_Bug56_Twitter_NameTemplate_Accepts_Spaces_And_Parens()
+    {
+        // Template uses '#' as the separator (NOT '-'), so unicode-dash is the right type for user_name.
+        // '{date-time}' is a plain token (any type) that catches `20260927-051900`.
+        var cfg = RuleEngine.LoadFromString("""
+            version: 1
+            default_action: move
+            conflict_strategy: rename
+            log_level: info
+            destinations:
+              twitter: D:\默认保存\下载\下载（待整理）\自动分类\DCIM\twitter
+            rules:
+              - name: Twitter
+                type: name_template
+                active: true
+                mappings:
+                  - token: '{user_id}'
+                    level: 1
+                extensions: [jpg, jpeg, png, mp4, webp]
+                template: twitter#(@{user_id})#{user_name:unicode-dash}#{date-time}#{status_id}.{ext}
+                destination: twitter
+            """);
+
+        // Test 1: 'bruce love you' (English name with ASCII space) → user_name must capture the full name
+        var r1 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@loveyou2tf5)#bruce love you#20260927-011908#2104017966467817747.jpg");
+        Assert.NotNull(r1);
+        Assert.Equal("Twitter", r1!.RuleName);
+        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\自动分类\DCIM\twitter\loveyou2tf5", r1.DestinationPath);
+
+        // Test 2: '饼干姐姐 (FortuneCutie00)' (Chinese + ASCII parens)
+        var r2 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@FortuneCutie01)#饼干姐姐 (FortuneCutie00)#20260927-051900#2104078329087504671.jpg");
+        Assert.NotNull(r2);
+        Assert.Equal("Twitter", r2!.RuleName);
+        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\自动分类\DCIM\twitter\FortuneCutie01", r2.DestinationPath);
+
+        // Test 3: 'chelseaxny' (plain ASCII) — regression check, still matches
+        var r3 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@chelseaxny)#chelseaxny#20260927#2104114.jpg");
+        Assert.NotNull(r3);
+        Assert.Equal("Twitter", r3!.RuleName);
+        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\自动分类\DCIM\twitter\chelseaxny", r3.DestinationPath);
+    }
 }

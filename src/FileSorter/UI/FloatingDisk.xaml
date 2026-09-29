@@ -1,19 +1,34 @@
 <Window x:Class="FileSorter.UI.FloatingDisk"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="80" Height="80"
+        Width="48" Height="48"
         WindowStartupLocation="Manual"
         AllowsTransparency="True"
         WindowStyle="None"
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        ResizeMode="NoResize">
-    <Border BorderBrush="#333" BorderThickness="2" CornerRadius="40"
-            Background="#CC007ACC" AllowDrop="True"
-            DragEnter="OnDragEnter" DragOver="OnDragEnter"
-            Drop="OnDrop">
-        <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center"
-                   VerticalAlignment="Center" Foreground="White"/>
-    </Border>
+        ResizeMode="NoResize"
+        SnapsToDevicePixels="False"
+        UseLayoutRounding="False"
+        RenderOptions.BitmapScalingMode="LowQuality"
+        MouseLeftButtonDown="OnMouseLeftButtonDown"
+        MouseMove="OnMouseMove"
+        MouseLeftButtonUp="OnMouseLeftButtonUp">
+    <Border BorderBrush="#333" BorderThickness="1.5" CornerRadius="24"
+                Background="#01000000" AllowDrop="True"
+                SnapsToDevicePixels="False"
+                UseLayoutRounding="False"
+                RenderOptions.BitmapScalingMode="LowQuality"
+                MouseLeftButtonDown="OnMouseLeftButtonDown"
+                MouseMove="OnMouseMove"
+                MouseLeftButtonUp="OnMouseLeftButtonUp"
+                DragEnter="OnDragEnter" DragOver="OnDragEnter"
+                Drop="OnDrop">
+            <Image x:Name="DiskImage" Stretch="Uniform" Width="40" Height="40" IsHitTestVisible="False"
+                   SnapsToDevicePixels="False"
+                   RenderOptions.BitmapScalingMode="LowQuality"
+                   RenderOptions.CachingHint="Cache"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
 </Window>

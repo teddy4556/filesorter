@@ -358,4 +358,63 @@ public class NameTemplatePathBuilderTests
         Assert.Equal("PIKAQ_Q", match.Groups[1].Value);
         Assert.Equal("PIKA\uD83D\uDC37", match.Groups[2].Value);
     }
+
+    [Fact]
+    public void Twitter_Template_Real_File_Diagnostic()
+    {
+        var re = NameTemplateCompiler.CompileToRegex("twitter#(@{user_id})#{user_name:unicode-dash}#{date-time}#{status_id:number}");
+        var stem = "twitter#(@KunKunshifupo)#困困 （10.6-13广📸）#20260928-103542#2104520418740883770";
+        var m = System.Text.RegularExpressions.Regex.Match(stem, re);
+        // Diagnostic: dump regex + match state
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Regex: " + re);
+        sb.AppendLine("Stem: " + stem);
+        sb.AppendLine("Match.Success: " + m.Success);
+        if (m.Success) {
+            sb.AppendLine("Groups:");
+            for (int i = 1; i < m.Groups.Count; i++) {
+                sb.AppendLine("  [" + i + "]: `" + m.Groups[i].Value + "`");
+            }
+        }
+        // Twitter @username + dot-in-display-name works (Bug v2.7.7)
+        Assert.True(m.Success, "Expected match but got False");
+        Assert.Equal("KunKunshifupo", m.Groups[1].Value);
+        Assert.Equal("困困 （10.6-13广📸）", m.Groups[2].Value);
+        Assert.Equal("20260928-103542", m.Groups[3].Value);
+        Assert.Equal("2104520418740883770", m.Groups[4].Value);
+    }
+
+
+
+
+
+    [Fact]
+    public void Twitter_Oemixn_Kaomoji_FullWidth_Dot_Match()
+    {
+        // Twitter user_name 含 halfwidth katakana ｡ U+FF61 (Po),不在 \p{S} 里,需显式加
+        var re = NameTemplateCompiler.CompileToRegex("twitter#(@{user_id})#{user_name:unicode-dash}#{date-time}#{status_id:number}");
+        var stem = "twitter#(@oemixn)#(｡•̀ᴗ-)✧#20260928-133210#2104564828878831716";
+        var m = System.Text.RegularExpressions.Regex.Match(stem, re);
+        Assert.True(m.Success, "Twitter kaomoji user_name should match (｡ U+FF61 added)");
+        Assert.Equal("oemixn", m.Groups[1].Value);
+        Assert.Equal("(｡•̀ᴗ-)✧", m.Groups[2].Value);
+        Assert.Equal("20260928-133210", m.Groups[3].Value);
+        Assert.Equal("2104564828878831716", m.Groups[4].Value);
+    }
+
+
+    [Fact]
+    public void Twitter_SexBrides_CornerBrackets_JpTitle_Match()
+    {
+        // user_name 含 『』 U+300E/F (Ps/Pe corner brackets,日文/中文标题书名号)
+        var re = NameTemplateCompiler.CompileToRegex("twitter#(@{user_id})#{user_name:unicode-dash}#{date-time}#{status_id:number}");
+        var stem = "twitter#(@SexBrides)#『酥•妻』少妇 人妻 新娘#20260928-144424#2104583006518444205-3";
+        var m = System.Text.RegularExpressions.Regex.Match(stem, re);
+        Assert.True(m.Success, "Twitter SexBrides 文件应该 match (『』U+300E/F 已加)");
+        Assert.Equal("SexBrides", m.Groups[1].Value);
+        Assert.Equal("『酥•妻』少妇 人妻 新娘", m.Groups[2].Value);
+        Assert.Equal("20260928-144424", m.Groups[3].Value);
+        Assert.Equal("2104583006518444205", m.Groups[4].Value);
+    }
+
 }

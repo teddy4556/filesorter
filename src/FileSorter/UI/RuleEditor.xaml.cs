@@ -500,18 +500,44 @@ public partial class RuleEditor : Window
 
     private void OnAdd(object sender, RoutedEventArgs e)
     {
+        // 2026-09-29: 新规则同步新建路径(用户需求 #2)
+        // 步骤:
+        //   1. 取一个 unique alias name(避免与现存 destination 冲突)
+        //   2. cfg.Destinations[alias] = 默认路径(用户后面在 EditPaths 改)
+        //   3. rule.Destination = alias
+        _cfg.Destinations ??= new();
+        _cfg.Rules ??= new();
+
+        var alias = MakeUniqueAlias("新规则", _cfg.Destinations.Keys);
+        // 默认路径:Documents 下以 alias 名建子目录
+        var defaultPath = System.IO.Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments),
+            "FileSorter", alias);
+        _cfg.Destinations[alias] = defaultPath;
+
         var newRule = new Rule
         {
             Name = "新规则",
             Type = "extension",
-            Destination = "inbox",
+            Destination = alias,
             Active = true
         };
         newRule.Patterns = new() { "txt" };
-        _cfg.Rules ??= new();
         _cfg.Rules.Add(newRule);
         RefreshList();
         RulesListBox.SelectedItem = newRule;
+    }
+
+    private static string MakeUniqueAlias(string baseName, IEnumerable<string> existing)
+    {
+        var set = new HashSet<string>(existing, StringComparer.Ordinal);
+        if (!set.Contains(baseName)) return baseName;
+        for (int i = 2; i < 1000; i++)
+        {
+            var candidate = $"{baseName}_{i}";
+            if (!set.Contains(candidate)) return candidate;
+        }
+        return $"{baseName}_{Guid.NewGuid():N}";
     }
 
     private void OnDelete(object sender, RoutedEventArgs e)
@@ -519,9 +545,29 @@ public partial class RuleEditor : Window
         if (_selectedRule == null) return;
         _cfg.Rules!.Remove(_selectedRule);
         _selectedRule = null;
+        // Prune + auto-register (v3). Design 2026-09-29:
+        //   Q1=a: only clean in-memory yaml, never touch disk folders.
+        //   Q2=a: auto-register an alias for absolute-path rules (so 微博 etc. survive).
+        //   Q3=a: prune on save AND on delete.
+        var result = DestinationPruner.Prune(_cfg);
         RefreshList();
         RebuildEditPanel();
         UpdatePreview();
+        if (result.RegisteredKeys.Count > 0 || result.RemovedKeys.Count > 0 || result.NulledRuleNames.Count > 0)
+        {
+            var msg = "";
+            if (result.RegisteredKeys.Count > 0)
+                msg += "已自动注册目录别名(规则使用了新路径):\n• " +
+                       string.Join("\n• ", result.RegisteredKeys) + "\n\n";
+            if (result.RemovedKeys.Count > 0)
+                msg += "清理了未使用的目录别名:\n• " +
+                       string.Join("\n• ", result.RemovedKeys) + "\n\n";
+            if (result.NulledRuleNames.Count > 0)
+                msg += "以下规则的 destination 已被自动置空:\n• " +
+                       string.Join("\n• ", result.NulledRuleNames) + "\n\n";
+            msg += "点 保存 后才会写入 rules.yaml。";
+            System.Windows.MessageBox.Show(msg, "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
     }
 
     private void OnMoveUp(object sender, RoutedEventArgs e) => Move(-1);
@@ -564,9 +610,21 @@ public partial class RuleEditor : Window
     {
         try
         {
+            // Prune + auto-register right before serializing so the on-disk
+            // rules.yaml only contains aliases that are still in use.
+            var prune = DestinationPruner.Prune(_cfg);
             RulesFileWriter.WriteWithBackup(_rulesPath, _cfg);
-            System.Windows.MessageBox.Show($"已保存到 {_rulesPath}\n(同时保留了最近 3 份 backup)",
-                "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
+            var msg = $"已保存到 {_rulesPath}\n(同时保留了最近 3 份 backup)";
+            if (prune.RegisteredKeys.Count > 0)
+                msg += $"\n\n自动注册了 {prune.RegisteredKeys.Count} 个目录别名(规则使用了新路径):\n• " +
+                       string.Join("\n• ", prune.RegisteredKeys);
+            if (prune.RemovedKeys.Count > 0)
+                msg += $"\n\n清理了 {prune.RemovedKeys.Count} 个未使用的目录别名:\n• " +
+                       string.Join("\n• ", prune.RemovedKeys);
+            if (prune.NulledRuleNames.Count > 0)
+                msg += $"\n\n{prune.NulledRuleNames.Count} 条规则的 destination 被置空:\n• " +
+                       string.Join("\n• ", prune.NulledRuleNames);
+            System.Windows.MessageBox.Show(msg, "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

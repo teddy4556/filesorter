@@ -124,18 +124,13 @@ public partial class App : Application
         _rulesPath = EnsureRulesFile();
         _cfg = RuleEngine.LoadFromFile(_rulesPath);
 
-        var dlg = new QuickRuleDialog(files, _cfg.Rules ?? new List<Rule>())
+        // 2026-09-28: SendTo 自动 first-match-wins 按 rules.yaml 顺序轮询每个 rule
+        // 直到命中。QuickRuleDialog 不再弹 — 用户在 tray icon 拖入路径时才会弹。
+        var svc = new ClassifierService(_cfg, dryRun: false);
+        foreach (var f in files)
         {
-            Owner = null  // top-level, no owner (avoid tying to a hidden main window)
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            var svc = new ClassifierService(_cfg, dryRun: false);
-            foreach (var f in files)
-            {
-                if (File.Exists(f))
-                    svc.ClassifyOne(f);
-            }
+            if (File.Exists(f))
+                svc.ClassifyOne(f);
         }
     }
 
