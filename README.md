@@ -2,212 +2,170 @@
 
 > Personal file classifier for Windows. Drag a file onto the floating disk, it moves to where your rules say it belongs.
 
-类似 DropIt / Hazel,但**只为你一个人设计**:配置是手改的 YAML,触发是悬浮圆盘 + 右键"发送到",冲突默认 `rename`(重命名加 `_1` `_2` 后缀,绝不丢文件)。
+类似 DropIt / Hazel,但**只为你一个人设计**:配置是手改的 YAML,触发是悬浮圆盘 + 右键"发送到",冲突默认 `rename`(自动按 Explorer 风格 `-N_N_N` dedup 后缀,**绝不丢文件**)。
 
 ## ✨ 特性
 
-- **悬浮窗拖入**:把文件拖到屏幕上的圆盘,按规则分类
+- **悬浮窗拖入**:把文件拖到屏幕右下角圆盘,按规则分类(150% DPI 下可正常拖动)
 - **右键"发送到"**:在资源管理器右键 → 发送到 → FileSorter
+- **SendTo 集成**:首次 `--install-sendto` 自动写 `%APPDATA%\Microsoft\Windows\SendTo\FileSorter.lnk`
 - **文件夹拖入对话框**:每次弹"递归 / 只处理顶层 / 取消"三选项(避免误操作)
-- **多级目录自动建**:`twitter_(@hahaoy8)_xxx.jpg` → `D:\示例\图片\twitter\@hahaoy8\`
+- **多级目录自动建**:`twitter#(@hahaoy8)#...#20260929.jpg` → `D:\示例\图片\twitter\@hahaoy8\20260929\`
 - **纯文本 YAML 规则**:手改也要能识别,2 秒内热加载
+- **可视化规则编辑器**:托盘菜单 → Open rules… 弹 GUI 编辑器,实时预览分类路径
 - **开机自启动**:`filesorter.exe --install` 写注册表,`--uninstall` 删
-- **最小化路径编辑**:右键托盘 → Open paths… 弹一个简单窗口,只改 `destinations.*` 路径
+- **DPI-aware**:`PerMonitorV2` DPI,150% 缩放下悬浮圆盘可正常拖动
 - **冲突策略**:默认 `rename`(不丢文件),可在 YAML 顶层改 `overwrite`/`skip`
 
 ## 📦 快速开始(从源码)
 
+### 前置
+- Windows 10/11
+- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+
+### 装 SDK(开发用,不需要发布版本)
+
 ```powershell
-# 1. 装 .NET 8 SDK(用户级即可)
+# 用户级安装,不污染 Program Files
 Invoke-WebRequest -Uri https://dot.net/v1/dotnet-install.ps1 -OutFile $env:TEMP\dotnet-install.ps1
 & $env:TEMP\dotnet-install.ps1 -Channel 8.0 -InstallDir "$env:USERPROFILE\.dotnet"
 [Environment]::SetEnvironmentVariable("Path", "$env:USERPROFILE\.dotnet;$env:Path", "User")
-
-# 2. clone & build & publish
-git clone <this-repo>.git filesorter
-cd filesorter
-dotnet publish src/FileSorter/FileSorter.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o .\dist\
-
-# 3. 跑(首次会创建 %APPDATA%\FileSorter\rules.yaml)
-.\dist\filesorter.exe
-
-# 4. (可选)开机自启动
-.\dist\filesorter.exe --install
-.\dist\filesorter.exe --uninstall
 ```
 
-输出是 `dist\filesorter.exe`,单文件 ~1 MB。需要 `.NET 8 Desktop Runtime` 在目标机器。
+### 克隆 + 编译
+
+```powershell
+git clone https://github.com/teddy4556/filesorter.git filesorter
+cd filesorter
+dotnet build src/FileSorter/FileSorter.csproj -c Release
+dotnet publish src/FileSorter/FileSorter.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o .\dist\
+```
+
+输出是 `dist\filesorter.exe`,单文件 ~1 MB。**目标机器只需要 .NET 8 Desktop Runtime**(不必装 SDK)。
+
+### 跑起来
+
+```powershell
+# 首次会创建 %APPDATA%\FileSorter\rules.yaml
+.\dist\filesorter.exe
+
+# (可选)开机自启动
+.\dist\filesorter.exe --install
+.\dist\filesorter.exe --uninstall
+
+# (可选)注册右键"发送到"菜单
+.\dist\filesorter.exe --install-sendto
+```
 
 ## 🛠️ 规则(YAML)
 
 **位置**:`%APPDATA%\FileSorter\rules.yaml`(右键托盘 → Open rules.yaml)
 
-**示例**(全规则示例见 `examples/rules.yaml`):
+完整示例见 `examples/rules.yaml`。最常用两种规则类型:
+
+### `extension` — 按扩展名分类
 
 ```yaml
-version: 1
-default_action: move
-conflict_strategy: rename   # rename | overwrite | skip
-
-destinations:
-  images: D:\示例\图片
-  documents: D:\示例\文档
-  archives: D:\示例\压缩包
-  inbox: D:\示例\未分类
-
 rules:
-  # 扩展名 → 单一目录
   - name: 压缩包
     type: extension
     patterns: [zip, rar, 7z, tar, gz]
     destination: archives
+```
 
-  # 文件名关键字(子串匹配)
-  - name: 发票
-    type: filename_keyword
-    patterns: ["发票", "invoice", "receipt"]
-    case_sensitive: false
-    extensions: [pdf, jpg]
-    destination: documents
+### `name_template` — 语义模板(社交媒体 / 截图场景)
 
-  # 扩展名 + 关键字同时满足
-  - name: 截图
-    type: combined
-    extension: [png, jpg]
-    filename_keyword: ["screenshot", "截图", "screen"]
-    destination: images
-
-  # 正则抽取 + 多级目录(path_template)
-  - name: 社交媒体图片
-    type: path_template
+```yaml
+rules:
+  - name: Twitter 图片
+    type: name_template
+    template: 'twitter#(@{user_id})#{user_name:unicode-dash}#{date-time}#{status_id:number}'
     extensions: [jpg, jpeg, png]
-    filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'   # group 1=平台  group 2=作者(不含 @)
-    path: '{destinations.images}\{1}\@{2}'         # 一级=平台  二级=@作者
+    destination: twitter
 ```
 
-### path_template token 速查
+文件名 `twitter#(@chacooooo0s)#Belle＊⑅♥#20260929-140000#2104934220808491298.jpg` 自动匹配并提取:
+- `user_id = chacooooo0s`
+- `user_name = Belle＊⑅♥`
+- `date = 20260929-140000`
+- `status_id = 2104934220808491298`
 
-| Token | 含义 |
-|---|---|
-| `{destinations.X}` | 引用 `destinations.X` 路径 |
-| `{1}` `{2}` ... | 正则捕获组 1、2... |
-| `{filename}` | 完整原文件名 |
-| `{stem}` | 不含扩展名 |
-| `{ext}` | 含点扩展名 |
-| `{date:yyyy-MM}` | 当前日期,可换格式 |
+#### Token 类型速查
 
-### path_template regex 注意事项
+| Token | 含义 | 匹配字符类 |
+|---|---|---|
+| `{word}` | ASCII 单词 | `[A-Za-z0-9_]+` |
+| `{date}` | `yyyyMMdd` | `\d{8}` |
+| `{date-time}` | `yyyyMMdd-HHmmss` | `\d{8}-\d{6}` |
+| `{number}` | 数字 | `\d+` |
+| `{unicode-dash}` | Unicode 安全字符(用户名 / Display Name) | `[\p{L}\p{N}\p{S}\p{M}\p{Cs}\p{Po}]` + 装饰字符(★ ☆ ♥ ❤ ❀ 等) |
+| `{filename}` / `{stem}` / `{ext}` | 原文件名 / 不含扩展名 / 扩展名 | 全文 / `.+?(?=\.[^.]+$)` / `\.[^.]+$` |
 
-C# 的 verbatim 字符串里 `\(` `\)` 是真正的转义括号(等同于 `\\(` `\\)` 在 YAML 文本里):
+**`unicode-dash`** 字符类包含:所有 Unicode 字母/数字/符号/标点 + 常见中文/日文标点(`、。?!,;:""''~—–`) + 装饰字符(`＊♥❤❀★☆✿✿✦✧`),匹配社交媒体用户名/Display Name 时几乎不会因为特殊字符漏匹配。
 
-```yaml
-filename_pattern: '^([a-z]+)_\(@([^)]+)\)_'
-```
+### 规则编辑器
 
-上面正则的 group 1 = `twitter`,group 2 = `hahaoy8`(不含 `@`),所以 path 模板里**手动加 `\@`**:
-
-```yaml
-path: '{destinations.images}\{1}\@{2}'  # → ...\twitter\@hahaoy8
-```
+托盘菜单 → **Open rules…** 打开 GUI:
+- 左侧规则列表(每条带 `Active` 复选框)
+- 右侧字段按 rule.type 自动切换
+- 底部"测试输入"框:输入文件名,实时显示分类路径(走完整 `RuleEngine.Match` 流水线)
+- 保存时自动留最近 3 份 `rules.yaml.bak.NNN` 备份
 
 ## 📂 目录结构
 
 ```
 filesorter/
 ├── src/FileSorter/
-│   ├── Core/              # 规则解析 + 匹配 + 分类服务
-│   ├── UI/                # WPF 窗口 + 托盘 + 悬浮窗
-│   ├── App.xaml(.cs)      # WPF 入口
-│   ├── rules.yaml         # 默认规则模板
+│   ├── Core/                   # 规则解析 + 匹配 + 分类服务
+│   │   ├── NameTemplateCompiler.cs   # 模板编译 + token 字符类
+│   │   ├── DestinationPruner.cs      # alias 自动清理(v6 = 删了就是删了)
+│   │   ├── PathsEditor.cs            # EditPaths 路径编辑
+│   │   └── RuleEngine.cs             # 匹配引擎
+│   ├── UI/                     # WPF 窗口 + 托盘 + 悬浮窗
+│   │   ├── FloatingDisk.xaml(.cs)    # 悬浮圆盘(可拖动,DPI-aware)
+│   │   ├── RuleEditor.xaml(.cs)      # 规则 GUI 编辑器
+│   │   └── EditPathsWindow.xaml(.cs) # 路径编辑
+│   ├── App.xaml(.cs)           # WPF 入口
+│   ├── app.manifest            # PerMonitorV2 DPI awareness
+│   ├── app.ico                 # 应用图标
 │   └── FileSorter.csproj
-├── tests/FileSorter.Tests/
+├── tests/FileSorter.Tests/     # 单元测试
 ├── examples/
-│   └── rules.yaml         # 全规则类型示例
+│   └── rules.yaml              # 全规则类型示例
 ├── docs/
-│   ├── design.md
-│   └── superpowers/plans/2026-09-27-filesorter.md
-└── README.md
+│   └── design.md
+├── _archive/                   # 历史 backup + 调试文件(已忽略)
+├── CHANGELOG.md                # 版本历史
+├── README.md                   # 本文件
+└── FileSorter.sln
 ```
 
 ## ⚠️ 已知限制
 
 - **只支持 Windows**(WPF 依赖,Linux/macOS 不行)
-- **tray 图标用系统默认**(`SystemIcons.Application`)——未做自定义 .ico
+- **`inbox` 别名不再保留**:Pruner v6 会清掉未被任何规则引用的 alias(含 `inbox`),需要确保规则 `destination` 引用了 `destinations.inbox`,否则别名会被自动删掉
+- **`default_action` 未匹配时不会回退到 inbox**:`ClassifierService` 在无规则命中时直接返回 "no rule matched",文件保持原位不动
 - **path_template** 只支持一个 `filename_pattern` 字段,不能多正则复合
-- **托盘菜单的"Open paths…"** 当前实现只编辑 `destinations` 块;改其它字段需要"Open rules.yaml"手动
-- **规则匹配顺序自上而下**,**第一**条命中的规则胜出
+- **规则匹配顺序自上而下**,**第一条命中的规则胜出** — 顺序敏感
 - 拖入文件夹 → **每次**都弹递归/顶层对话框(不记忆选择)
-
-## 🆕 v2 新特性(2026-09+)
-
-| 特性 | 说明 |
-|---|---|
-| SendTo 集成 | 自动写 `SendTo\FileSorter.lnk`,资源管理器右键 → 发送到 → FileSorter |
-| Rule + Mappings | name_template 规则可声明 `mappings: [{token, level}]` 控制多级目录生成 |
-| name_template 规则 | `{platform}_@{author}_{date:yyyyMMdd}.{ext}` 这种语义模板,自动编译成 regex |
-| filename_pattern 规则 | `starts_with` / `ends_with` 边匹配 + 多扩展名,比 `combined` 更轻量 |
-| GUI 规则编辑器 | 托盘菜单 → Open rules…,可视化增删改 + 重排 + 实时预览 |
-| 热加载 + backup 保留 | YAML 保存时自动保留最近 3 份 `rules.bak.N` 备份 |
-| Active 开关 | 单条规则可临时禁用(不删),`active: false` 在加载和编辑里都保留 |
-
-### v2 规则示例
-
-```yaml
-# name_template:从模板自动生成多级目录
-- name: 社交媒体图片
-  type: name_template
-  template: "{platform}_@{author}_{date:yyyyMMdd}.{ext}"
-  destination: images
-  mappings:
-    - { token: "{platform}", level: 1 }   # 第 1 级 = 平台
-    - { token: "{author}",   level: 2 }   # 第 2 级 = 作者
-```
-
-`twitter_@hahaoy8_20260927.jpg` → `D:\示例\图片\twitter\@hahaoy8\`
-
-```yaml
-# filename_pattern:边匹配 + 多扩展名
-- name: 截图
-  type: filename_pattern
-  extensions: [png, jpg]
-  starts_with: [screenshot_, ScreenShot]
-  case_sensitive: false
-  destination: images
-```
-
-```yaml
-# 临时禁用某条规则(不删)
-- name: 测试规则
-  type: extension
-  patterns: [tmp]
-  destination: inbox
-  active: false      # v2 新字段;默认 true
-```
-
-### GUI 规则编辑器
-
-托盘菜单 → **Open rules…** 打开可视化编辑器:
-
-- 左侧规则列表(每条带 `Active` 复选框)
-- 右侧字段自动按 rule.type 切换:extension / filename_pattern / path_template / name_template 各有专属字段
-- Mappings 用 token 下拉框(自动从模板抽取)+ level 下拉框(1-5)+ Add/Delete 行
-- 底部"测试输入"框:输入文件名,实时显示会被分到哪个目录(走完整 RuleEngine.Match 流水线)
-- 保存时自动留最近 3 份 backup
-
-### SendTo 一键启用
-
-首次跑 `filesorter.exe --install-sendto`,会在 `%APPDATA%\Microsoft\Windows\SendTo\FileSorter.lnk` 写快捷方式。资源管理器右键 → 发送到 → FileSorter 即可触发分类。
+- **EditPaths 窗口**只编辑 `destinations.*` 路径块,改其它字段需要"Open rules.yaml"手动
 
 ## 🧪 开发
 
 ```powershell
-# 跑单元测试(49 个:16 v1 + 33 v2)
+# 跑单元测试
 dotnet test
 
 # 写完改代码 → 重新发布
 dotnet publish src/FileSorter/FileSorter.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o .\dist\
 ```
 
+**Cross-platform dev workflow**:可以在 Linux 容器(NAS)上用 .NET SDK 编辑代码,但**编译产物是 .NET 8 Windows 应用**,必须在 Windows 上 `dotnet publish` 或跑 `csc.dll` 直接编译。本仓库的日常开发流程是:代码编辑在 Linux 容器(NAS),cross-compile/deploy 在 Windows(通过 windows-mcp)。
+
 ## 📝 License
 
 MIT
+
+---
+
+详细版本历史 → [CHANGELOG.md](./CHANGELOG.md)
