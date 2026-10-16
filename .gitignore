@@ -14,7 +14,25 @@ dist/
 .DS_Store
 Thumbs.db
 *.swp
+
+## Source backups — convention is `.bak-<reason>-<YYYYMMDD-HHMMSS>` (fact #380).
+## `*.bak` alone matched NOTHING: every backup file leaked into `git status`
+## (verified 2026-10-16 with an empty repo). 24 of them were sitting untracked.
 *.bak
+*.bak-*
+*.bak-*.*
+*.gitignore.bak-*
+
+## Local-only debug tooling — hardcodes C:\Users\yaoyx\... and D:\hermes-工作目录\...
+## Publishing it to a public repo leaks personal paths.
+probe-runner/
+
+## Scratch files from debugging sessions
+_tmp_*
+_tmp_*.*
+
+## Local-only rule snippets (contain the user's real absolute paths)
+instagram_rule_snippet.md
 
 ## Test artifacts
 TestResults/
