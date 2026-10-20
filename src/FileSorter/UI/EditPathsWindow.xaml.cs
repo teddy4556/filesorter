@@ -25,7 +25,25 @@ public partial class EditPathsWindow : Window
         foreach (var kv in cfg.Destinations)
             Rows.Add(new PathRow { Name = kv.Key, Path = kv.Value });
         DataContext = this;  // Binding: XAML ItemsSource="{Binding Rows}"
+
+        // 毛玻璃必须在窗口句柄创建后设置
+        Loaded += (_, _) => ApplyGlass();
+        SourceInitialized += (_, _) => ApplyGlass();
     }
+
+    // ================= 毛玻璃(2026-10-20 与其它窗口统一) =================
+
+    private void ApplyGlass()
+    {
+        try
+        {
+            if (Dwm.TryEnableLegacyBlur(this)) Dwm.SetDarkTitleBar(this, true);
+            Dwm.TrySetRoundedCorners(this);
+        }
+        catch { /* 材质失败不影响功能 */ }
+    }
+
+    private void OnClose(object sender, RoutedEventArgs e) => OnCancel(sender, e);
 
     private void OnBrowse(object sender, RoutedEventArgs e)
     {

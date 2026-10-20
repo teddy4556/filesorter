@@ -74,6 +74,23 @@
 
 - **弹窗复选框对齐修复**:「包含子目录(递归监听)」和「启用这条配置」原来把 CheckBox 和文字当两个独立元素竖着塞进 StackPanel —— 方块顶在上面、文字在下面,视觉上完全不在一行(用户反馈「框和选项没有水平」)。新增 `MakeCheckRow(CheckBox, label, topGap)` 装进横向 StackPanel,两者 `VerticalAlignment=Center`,CheckBox 固定 16px 高,上下间距统一由 topGap 控制(16 / 10),不再各写各的 Margin。
 
+- **三个剩余窗口全部改毛玻璃,UI 风格彻底统一**:
+
+  | 窗口 | 触发方式 | 之前 | 现在 |
+  |---|---|---|---|
+  | `EditPathsWindow`(编辑路径) | 托盘「编辑路径…」 | 老式系统窗口,默认控件样式 | 毛玻璃 + Theme.xaml 资源,路径列表改 `GlassTextBox` |
+  | `QuickRuleDialog`(选择规则) | 拖文件进来时弹出 | 老式系统窗口,220px 高 ListBox | 毛玻璃,ListBox 透明底去边框,规则项 12.5px |
+  | `FolderModeDialog`(拖入文件夹) | 拖文件夹进来时弹出 | 老式系统窗口,纯 TextBlock | 毛玻璃,路径+统计装进 `CardBrush` 卡片,三个按钮走统一样式 |
+
+  三者统一做法:
+  - `AllowsTransparency=True` + `Background=Transparent` + `WindowStyle=None`
+  - 根节点 `<Border Background="{StaticResource GlassChromeBrush}" CornerRadius="10">`
+  - `Window.Resources` 合并 `Theme.xaml`(与规则编辑器 / 自动归类同一份资源字典)
+  - code-behind 在 `Loaded` + `SourceInitialized` 双钩子调 `Dwm.TryEnableLegacyBlur` + `SetDarkTitleBar(true)` + `TrySetRoundedCorners`
+  - 右上角自绘 `✕` 关闭按钮(`EditPathsWindow` 的关闭复用 `OnCancel`,避免重复逻辑)
+
+  至此 `FileSorter` 除 `FloatingDisk`(桌面悬浮图标,本来就是透明的,不需要毛玻璃)之外,**所有窗口都是同一套毛玻璃风格**。
+
 ### 🧪 为什么以前测试全绿却抓不到 bug
 
 今天在「自动归类设置」窗口上连踩三个 bug(YAML 重复 key、`WatchFolders` getter 返回副本、双别名属性字段名不匹配),而当时 **118 个测试全部通过**。

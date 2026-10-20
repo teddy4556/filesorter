@@ -1,33 +1,84 @@
 <Window x:Class="FileSorter.UI.EditPathsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FileSorter - 编辑路径" Width="560" SizeToContent="Height"
-        WindowStartupLocation="CenterScreen">
-    <StackPanel Margin="12">
-        <TextBlock Text="选择每个目的地的路径,然后点保存。" Margin="0,0,0,8" />
-        <ItemsControl ItemsSource="{Binding Rows}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Grid Margin="0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
-                        <TextBox Grid.Column="1" Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="4,0"/>
-                        <Button Grid.Column="2" Content="浏览…" Click="OnBrowse" Margin="4,0"/>
-                        <Button Grid.Column="3" Content="清除" Click="OnClear"/>
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="打开 rules.yaml" Click="OnOpenYaml" Margin="0,0,8,0"/>
-            <Button Content="取消" Click="OnCancel" Margin="0,0,8,0"/>
-            <Button Content="保存" Click="OnSave" IsDefault="True"/>
+        Title="FileSorter - 编辑路径" Width="620" SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        FontFamily="Microsoft YaHei UI, Microsoft YaHei, Segoe UI"
+        UseLayoutRounding="True">
+
+    <!-- 2026-10-20 改毛玻璃,与规则编辑器 / 自动归类窗口统一 -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/FileSorter;component/UI/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border Background="{StaticResource GlassChromeBrush}"
+            BorderBrush="{StaticResource GlassBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10">
+        <StackPanel Margin="24,20,24,20">
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="FileSorter · 编辑路径" FontSize="15" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+                    <TextBlock Text="选择每个目的地的路径,然后点保存。" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="1" Content="✕" Style="{StaticResource RowButton}"
+                        Width="42" Height="30" BorderThickness="0"
+                        Background="Transparent" Click="OnClose"
+                        VerticalAlignment="Top" ToolTip="关闭" />
+            </Grid>
+
+            <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto" Margin="0,0,0,4">
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,8,0"/>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource GlassTextBox}" Margin="0,0,6,0"/>
+                                <Button Grid.Column="2" Content="浏览…" Click="OnBrowse"
+                                        Style="{StaticResource BaseButton}" Margin="0,0,6,0"/>
+                                <Button Grid.Column="3" Content="清除" Click="OnClear"
+                                        Style="{StaticResource BaseButton}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Rectangle Height="1" Fill="{StaticResource GlassDividerBrush}" Margin="0,14,0,12" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="打开 rules.yaml" Click="OnOpenYaml"
+                        Style="{StaticResource BaseButton}" Margin="0,0,8,0"/>
+                <Button Content="取消" Click="OnCancel"
+                        Style="{StaticResource BaseButton}" Margin="0,0,8,0"/>
+                <Button Content="保存" Click="OnSave" IsDefault="True"
+                        Style="{StaticResource PrimaryButton}"/>
+            </StackPanel>
         </StackPanel>
-    </StackPanel>
+    </Border>
 </Window>

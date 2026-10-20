@@ -28,6 +28,10 @@ public partial class QuickRuleDialog : Window
         choices.AddRange(rules.Select(r => new Choice { Display = $"{r.Name}  ({r.Type})", Rule = r }));
         RulesList.ItemsSource = choices;
         RulesList.SelectedIndex = 0;
+
+        // 毛玻璃必须在窗口句柄创建后设置
+        Loaded += (_, _) => ApplyGlass();
+        SourceInitialized += (_, _) => ApplyGlass();
     }
 
     private void OnOk(object sender, RoutedEventArgs e)
@@ -41,5 +45,17 @@ public partial class QuickRuleDialog : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    // ================= 毛玻璃(2026-10-20 与其它窗口统一) =================
+
+    private void ApplyGlass()
+    {
+        try
+        {
+            if (Dwm.TryEnableLegacyBlur(this)) Dwm.SetDarkTitleBar(this, true);
+            Dwm.TrySetRoundedCorners(this);
+        }
+        catch { /* 材质失败不影响功能 */ }
     }
 }
