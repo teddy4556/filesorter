@@ -13,6 +13,15 @@
     <RootNamespace>FileSorter</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- 版本号。
+         ⚠️ 2026-10-19 之前这里什么都没有,导致所有发布版的 DLL 版本都是 0.0.0.0,
+         托盘「关于」和排查线上问题时的版本对不上。改版本号只需改这一处。
+         改完记得同步更新 CHANGELOG.md 顶部的「当前版本」速览。 -->
+    <Version>2.8.0</Version>
+    <AssemblyVersion>2.8.0.0</AssemblyVersion>
+    <FileVersion>2.8.0.0</FileVersion>
+    <InformationalVersion>2.8.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

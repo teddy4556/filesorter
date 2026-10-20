@@ -2,7 +2,7 @@
 
 所有 notable 改动记录在这里。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-> **🎯 速览**:v2.7.11 是当前版本(2026-09-29),含 Pruner v6"删了就是删了"+ FloatingDisk DPI-aware + NTC unicode-dash 扩展 + RuleEditor 自动派生 alias。
+> **🎯 速览**:v2.8.0 是当前版本(2026-10-19),含自动归类监听目录(rules.yaml watch_folders)+ 毛玻璃管理窗口 + FloatingDisk 拖动物理 1:1。
 >
 > 历史 → [git log](https://github.com/teddy4556/filesorter/commits/main)
 
@@ -11,6 +11,45 @@
 ## [Unreleased] — 待发布
 
 待开发功能待定。
+
+---
+
+## [2.8.0] — 2026-10-19
+
+### 🚀 新增 / 功能
+
+- **自动归类(新能力)**:指定文件夹后,文件放进去即自动按 `rules.yaml` 归类,不用再右键发送到 FileSorter。配置写在 `rules.yaml` 的 `watch_folders` 段。
+- **三种监控模式**:`Realtime`(文件落地即处理)/ `Every5Minutes` / `Every30Minutes`,每条可单独用 `interval_seconds` 覆盖。
+- **稳定期(stable_seconds)**:文件大小连续 N 秒不变才交给分类器,防半拷贝。大视频建议 10~30 秒,默认 2 秒。
+- **未命中原地不动**:没有规则命中的文件**留在原处**,不套用 `default_action`。
+- **防循环**:目标目录及其父子目录自动跳过监听,避免刚归类完的文件又被自己触发。
+- **托盘总开关**:一键暂停/恢复全部监听,配置保留。
+- **运行时统计**:已归类 / 未命中 / 失败计数、最近一次处理时间、运行时长、每目录处理数(含下次扫描倒计时)。
+- **「自动归类设置」窗口**:旧毛玻璃 DWM 材质,1020×700,侧栏实时状态 + 五张概览卡。数据全部来自真实 service,非占位值。
+- **`filesorter.exe --watch-ui`**:命令行直接打开管理窗口,方便做桌面快捷方式。
+- **`FileLogger`**:后台诊断写 `%APPDATA%\FileSorter\filesorter.log`,2 MB 轮转。
+- **双 key 兼容**:`watch_folders`(snake_case)和 `watchFolders`(camelCase)都能读。
+
+### 🐛 修复
+
+- **「调整」按钮无响应**:`ShowEditor` 每次 `RootGrid.Children.Add(dialog)` 但从不移除,旧 dialog 永久叠在最上层,新 dialog 与之完全重叠。改为持有 `_dlg` 引用 + `CloseEditor()` 统一收尾(取消/保存/点遮罩/重开前都走它)。
+- **「保存」不生效(三个叠坑)**:
+  1. `RulesConfig` 的双别名属性导致 YAML 写出两行 `watchFolders`,后者覆盖前者,读回 0 个目录。改用写盘专用 DTO(`RulesConfigWriteDto` + `WatchFolderWriteDto`)绕开别名。
+  2. `RulesConfig.WatchFolders` 的 getter 每次 `.ToList()` 返回**新对象**,直接 `Add`/`RemoveAt` 改的是临时副本,setter 从未被调用。新增 `MutateWatchFolders()` helper 强制回写。
+  3. `SaveAndReload` 现在写盘后立刻读回对账,数量不符直接弹错误框并指出重复 key —— 静默失败过一次,不再静默。
+- **`DwmEnableBlurBehindWindow` 返回 `0x80070057`**:`dwFlags` 传 `0` 本身非法(语义是「不带任何 `DWM_BB_*` 标志」),看着像系统不支持。必须传 `DWM_BB_ENABLE = 1`。
+- **毛玻璃完全不可见**:背景色 alpha `0xF0`(94% 不透明)只透 6%,DWM 模糊看不出任何效果。改用 `0xB8`(72%)。判据:alpha > `0xE0` 时不要指望能看见材质。
+- **`FloatingDisk` 拖动不是 1:1**:旧代码把 `PointToScreen` 的物理像素与 `GetPosition` 的 DIP 混用,150% 缩放下持续撞 `WorkArea` clamp。改为经 `TransformFromDevice` 显式转换后按绝对坐标计算。
+- **版本号一直是 0.0.0.0**:csproj 从来没有 `<Version>` 节点,所有发布版 DLL 版本信息都是空的。本版补上 `Version` / `AssemblyVersion` / `FileVersion` / `InformationalVersion`。
+
+### 🧪 测试
+
+- 118 个测试全部通过(新增 `WatchFolderTests.cs` 406 行)。
+
+### ⚠️ 已知限制
+
+- 毛玻璃窗口用 `AllowsTransparency=True`,走软件渲染。当前无卡顿,若日后加入大量图片预览或复杂动画需重新评估。
+- Win11 专属的 Mica / Acrylic 在 WPF layered 窗口上是空 API(返回 `S_OK` 但不渲染),验证材质必须看截图不能看返回值。
 
 ---
 
