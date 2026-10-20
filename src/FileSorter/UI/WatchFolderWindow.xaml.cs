@@ -859,8 +859,11 @@ public partial class WatchFolderWindow : Window
             Style = TryFindResource("GlassTextBox") as Style
         };
 
-        var recursiveCheck = new CheckBox { IsChecked = existing.Recursive, Margin = new Thickness(0, 12, 0, 0) };
-        var enabledCheck = new CheckBox { IsChecked = isNew ? true : existing.Enabled, Margin = new Thickness(0, 6, 0, 0) };
+        // ⚠️ 这两个 CheckBox 不设 Margin —— 上下间距由 MakeCheckRow 统一控制。
+        // 原来一个 12 一个 6,而且 CheckBox 和文字是两个独立元素竖着堆进 StackPanel,
+        // 所以方块和字根本不在同一行(用户反馈「框和选项没有水平」)。
+        var recursiveCheck = new CheckBox { IsChecked = existing.Recursive };
+        var enabledCheck = new CheckBox { IsChecked = isNew ? true : existing.Enabled };
 
         var stack = new StackPanel { Margin = new Thickness(22, 20, 22, 20), Width = 520 };
 
@@ -873,12 +876,8 @@ public partial class WatchFolderWindow : Window
             "实时 = 文件落地就处理(推荐);定时 = 按间隔轮询目录。"));
         stack.Children.Add(MakeField("稳定期(秒)", settleBox,
             "文件大小连续几秒不变才处理 —— 防半拷贝。留空 = 默认 2 秒,大视频建议 10~30。"));
-        stack.Children.Add(recursiveCheck);
-        stack.Children.Add(MakeText("包含子目录(递归监听)", 12.5, FontWeights.Normal, TextSecondary(),
-            margin: new Thickness(22, 0, 0, 0)));
-        stack.Children.Add(enabledCheck);
-        stack.Children.Add(MakeText("启用这条配置", 12.5, FontWeights.Normal, TextSecondary(),
-            margin: new Thickness(22, 0, 0, 0)));
+        stack.Children.Add(MakeCheckRow(recursiveCheck, "包含子目录(递归监听)"));
+        stack.Children.Add(MakeCheckRow(enabledCheck, "启用这条配置", topGap: 10));
 
         var buttons = new StackPanel
         {
@@ -962,6 +961,32 @@ public partial class WatchFolderWindow : Window
         _dlg = dialog;
         RootGrid.Children.Add(dialog);
         Overlay.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>「复选框 + 文字」一行,两者垂直居中对齐。
+    ///
+    /// ⚠️ 2026-10-20 修:原来 CheckBox 和文字是两个独立元素竖着塞进 StackPanel,
+    /// 方块顶在上面、文字在下面,视觉上完全不在一行(用户反馈「框和选项没有水平」)。
+    ///
+    /// WPF 的 CheckBox 默认把方块和它自己的 Content 居中,但这里 Content 是空的
+    /// (文字是独立的 TextBlock),所以方块会贴顶。这里强制两者 VerticalAlignment=Center,
+    /// 并给 CheckBox 一个固定 16px 高度,确保跟 12.5px 的文字视觉基线对齐。
+    /// </summary>
+    private static UIElement MakeCheckRow(CheckBox box, string label, double topGap = 16)
+    {
+        box.VerticalAlignment = VerticalAlignment.Center;
+        box.Height = 16;
+        box.Margin = new Thickness(0);
+
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, topGap, 0, 0)
+        };
+        row.Children.Add(box);
+        row.Children.Add(MakeText(label, 12.5, FontWeights.Normal, TextSecondary(),
+            margin: new Thickness(8, 0, 0, 0)));
+        return row;
     }
 
     private UIElement MakeField(string label, UIElement editor, string hint)

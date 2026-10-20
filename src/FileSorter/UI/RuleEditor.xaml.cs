@@ -1,8 +1,16 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using FileSorter.Core;
 using FileSorter.Core.Models;
 using Dock = System.Windows.Controls.Dock;
+
+// ⚠️ 本项目 csproj 同时开 UseWPF + UseWindowsForms,裸写 Color / Button 会报 CS0104。
+// 起别名锁定 WPF 版本。
+using Color = System.Windows.Media.Color;
+using Brush = System.Windows.Media.Brush;
+using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 
 namespace FileSorter.UI;
 
@@ -18,7 +26,62 @@ public partial class RuleEditor : Window
         _rulesPath = rulesPath;
         _cfg = cfg;
         RefreshList();
+
+        // 毛玻璃必须在窗口句柄创建后设置(2026-10-20:跟自动归类窗口对齐)
+        Loaded += (_, _) => ApplyGlass();
+        SourceInitialized += (_, _) => ApplyGlass();
+        BindTitleBarDrag();
     }
+
+    private void ApplyGlass()
+    {
+        try
+        {
+            if (Dwm.TryEnableLegacyBlur(this))
+            {
+                // 半透明窗口配深色标题栏图标才看得清
+                Dwm.SetDarkTitleBar(this, true);
+            }
+            Dwm.TrySetRoundedCorners(this);
+        }
+        catch { /* 材质失败不影响功能 */ }
+    }
+
+    // ================= 标题栏交互 =================
+
+    /// <summary>
+    /// 标题栏拖动。挂在 TitleBar Border 上而不是整窗,
+    /// 这样点右侧的最小化/最大化/关闭按钮不会触发 DragMove(DragMove 会吃掉点击)。
+    /// 用 code-behind 挂事件而不是 XAML 的 InputBindings —— 那样写 XAML 编译器报 MC3072。
+    /// </summary>
+    private void BindTitleBarDrag()
+    {
+        if (TitleBar is null) return;
+        TitleBar.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount == 2)
+            {
+                OnMaximize(null!, new RoutedEventArgs());
+                return;
+            }
+            if (e.ButtonState == MouseButtonState.Pressed) OnTitleDrag(null!, e);
+        };
+    }
+
+    private void OnTitleDrag(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            try { DragMove(); } catch { /* 正在最大化/恢复时会抛,忽略 */ }
+        }
+    }
+
+    private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void OnMaximize(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
     private void RefreshList()
     {

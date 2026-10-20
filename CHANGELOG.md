@@ -62,6 +62,18 @@
 - **`WrapCard()` 包装器**:`WrapPanel` 只能加 `Panel` 的子类,裸 `TextBlock` 加不进去(编译通过但视觉不对)。改成 `Border` 包装,标签/单位文案存 `TextBlock.Tag` 里由包装器取出。
 - **UI 保存链路测试(`UiSaveRoundTripTests.cs`,14 个)**:见下方「为什么以前测试全绿却抓不到 bug」。
 
+- **规则编辑器改毛玻璃,与「自动归类」窗口统一**:原来还是老式系统窗口 + 硬编码配色(`#FF9800` 橙按钮 / `#4CAF50` 绿按钮 / `#F5F5F5` 灰底 / `#CCC` 边框),两个窗口并排放像两个不同的应用。现在:
+  - `WindowStyle=None` + 自绘标题栏 + 10px 圆角 + DWM 旧毛玻璃
+  - 配色全走 `Theme.xaml` 资源字典(`BaseButton` / `PrimaryButton` / `CardBrush` / `TextPrimaryBrush` …)
+  - 规则列表改为透明底 + 「规则列表」分区标题,ListBox 去边框
+  - 测试输入卡改 `CardBrush` + 8px 圆角
+  - 窗口尺寸 900×600 → 1020×700,与另一个窗口一致
+  - 最小化 / 最大化 / 关闭三按钮自绘,双击标题栏最大化(挂在 `TitleBar` Border 上,点右侧按钮不触发 `DragMove`)
+
+- **`filesorter.exe --rules-ui`**:命令行直接打开规则编辑器,跟 `--watch-ui` 同性质,方便做桌面快捷方式。
+
+- **弹窗复选框对齐修复**:「包含子目录(递归监听)」和「启用这条配置」原来把 CheckBox 和文字当两个独立元素竖着塞进 StackPanel —— 方块顶在上面、文字在下面,视觉上完全不在一行(用户反馈「框和选项没有水平」)。新增 `MakeCheckRow(CheckBox, label, topGap)` 装进横向 StackPanel,两者 `VerticalAlignment=Center`,CheckBox 固定 16px 高,上下间距统一由 topGap 控制(16 / 10),不再各写各的 Margin。
+
 ### 🧪 为什么以前测试全绿却抓不到 bug
 
 今天在「自动归类设置」窗口上连踩三个 bug(YAML 重复 key、`WatchFolders` getter 返回副本、双别名属性字段名不匹配),而当时 **118 个测试全部通过**。

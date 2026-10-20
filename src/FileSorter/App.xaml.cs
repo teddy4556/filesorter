@@ -51,6 +51,9 @@ public partial class App : Application
         // 只是在初始化完成后多开一个窗口,这样从快捷方式启动也能看到实时统计。
         var wantWatchUi = e.Args.Any(a =>
             string.Equals(a, "--watch-ui", StringComparison.OrdinalIgnoreCase));
+        // --rules-ui 直接打开规则编辑器(跟 --watch-ui 同性质,方便做桌面快捷方式)
+        var wantRuleUi = e.Args.Any(a =>
+            string.Equals(a, "--rules-ui", StringComparison.OrdinalIgnoreCase));
 
         // Normal startup
         _rulesPath = EnsureRulesFile();
@@ -94,6 +97,7 @@ public partial class App : Application
         _disk.Show();
 
         if (wantWatchUi) OpenWatchManager();
+        if (wantRuleUi) OpenRuleEditor();
     }
 
     /// <summary>打开自动归类管理窗口。已开就前置,不重复开第二个。</summary>
