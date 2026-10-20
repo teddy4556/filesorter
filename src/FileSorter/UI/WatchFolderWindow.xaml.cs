@@ -124,21 +124,6 @@ public partial class WatchFolderWindow : Window
     /// 表现为「点调整没反应」和「保存后不关闭」。</summary>
     private Border? _dlg;
 
-    /// <summary>
-    /// 改写监听目录列表并写回 cfg。
-    /// ⚠️ 必须走这个 helper,不能直接 _cfg.WatchFolders.Add(...) ——
-    /// RulesConfig.WatchFolders 的 getter 每次 .ToList() 返回**新对象**
-    /// (它是从 Snake + Camel 两个别名属性合并出来的只读视图),
-    /// 直接 Add/RemoveAt 改的是临时副本,setter 从来没被调用,写盘还是 0 个目录。
-    /// 这就是「保存未关闭和生效」第二个根因(2026-10-19 实测)。
-    /// </summary>
-    private void MutateWatchFolders(Action<List<WatchFolder>> mutate)
-    {
-        var list = _cfg.WatchFolders;      // getter 返回副本
-        mutate(list);
-        _cfg.WatchFolders = list;          // setter 写回 WatchFoldersSnake —— 这步是关键
-    }
-
     private void CloseEditor()
     {
         Overlay.Visibility = Visibility.Collapsed;
@@ -941,7 +926,7 @@ public partial class WatchFolderWindow : Window
                 IntervalSeconds = existing.IntervalSeconds
             };
 
-            MutateWatchFolders(list =>
+            MutateWatchFolders(_cfg, list =>
             {
                 if (isNew) list.Add(updated);
                 else list[index] = updated;
@@ -995,7 +980,7 @@ public partial class WatchFolderWindow : Window
         if (sender is not CheckBox cb || cb.Tag is not int idx) return;
         if (idx < 0 || idx >= _cfg.WatchFolders.Count) return;
         var want = cb.IsChecked == true;
-        MutateWatchFolders(list => list[idx].Enabled = want);
+        MutateWatchFolders(_cfg, list => list[idx].Enabled = want);
         SaveAndReload();
         BuildContent();
     }
@@ -1010,29 +995,60 @@ public partial class WatchFolderWindow : Window
             "FileSorter", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (ok != MessageBoxResult.Yes) return;
 
-        MutateWatchFolders(list => list.RemoveAt(index));
+        MutateWatchFolders(_cfg, list => list.RemoveAt(index));
         SaveAndReload();
         BuildContent();
         BuildSidebar();
+    }
+
+    /// <summary>
+    /// 把 cfg 写盘,再读回来对账,返回读回来的新配置。
+    ///
+    /// ⚠️ 抽成静态公共方法是有原因的(2026-10-20):这段逻辑原来埋在 private
+    /// SaveAndReload() 里,UI 测试够不到,于是「写盘 → 读回」这条链路上出的三个
+    /// bug(YAML 重复 key / getter 返回副本 / 别名丢失)全都没被 118 个测试覆盖到,
+    /// 测试全绿而功能是坏的。抽出来后 UiSaveRoundTripTests 能直接跑真实代码路径。
+    ///
+    /// 对账失败返回 null(不抛异常):UI 层决定怎么提示,测试层只要判 null。
+    /// </summary>
+    public static RulesConfig? SaveAndVerify(string path, RulesConfig cfg)
+    {
+        var expected = cfg.WatchFolders.Count;
+
+        RulesFileWriter.WriteWithBackup(path, cfg);
+
+        // 读回来对账:数量对不上说明写盘链路有 bug(重复 key / 字段名不匹配 / 别名丢失)。
+        // 静默失败过一次,不能再静默。
+        var fresh = RuleEngine.LoadFromFile(path);
+        var actual = fresh.WatchFolders.Count;
+        return actual == expected ? fresh : null;
+    }
+
+    /// <summary>就地改写 cfg 的监听目录列表并写回。
+    ///
+    /// ⚠️ 必须走这个方法,不能直接 <c>cfg.WatchFolders.Add(...)</c>:
+    /// RulesConfig.WatchFolders 的 getter 每次 .ToList() 返回**新对象**
+    /// (它是从 Snake + Camel 两个别名属性合并出来的只读视图),
+    /// 直接 Add/RemoveAt 改的是临时副本,setter 从未被调用,写盘还是 0 个目录。
+    /// 这就是「保存未生效」三个叠坑里最隐蔽的一个。
+    /// </summary>
+    public static void MutateWatchFolders(RulesConfig cfg, Action<List<WatchFolder>> mutate)
+    {
+        var list = cfg.WatchFolders;      // getter 返回副本
+        mutate(list);
+        cfg.WatchFolders = list;          // setter 写回 WatchFoldersSnake —— 这步是关键
     }
 
     private void SaveAndReload()
     {
         try
         {
-            // 期望数量先记下来 —— 写盘后要拿它跟读回来的数量对账
-            var expected = _cfg.WatchFolders.Count;
-
-            RulesFileWriter.WriteWithBackup(_rulesPath, _cfg);
-
-            // 读回来对账:数量对不上说明写盘链路有 bug(重复 key / 字段名不匹配 / 别名丢失)。
-            // 静默失败过一次,不能再静默 —— 直接报错并把实际值摆出来。
-            var fresh = RuleEngine.LoadFromFile(_rulesPath);
-            var actual = fresh.WatchFolders.Count;
-            if (actual != expected)
+            var fresh = SaveAndVerify(_rulesPath, _cfg);
+            if (fresh is null)
             {
+                var actual = RuleEngine.LoadFromFile(_rulesPath).WatchFolders.Count;
                 MessageBox.Show(this,
-                    $"配置写盘后读回不一致。\n期望 {expected} 个监听目录,实际读到 {actual} 个。\n\n" +
+                    $"配置写盘后读回不一致。\n期望 {_cfg.WatchFolders.Count} 个监听目录,实际读到 {actual} 个。\n\n" +
                     $"文件:{_rulesPath}\n请检查该文件里 watchFolders 段是否出现重复 key。",
                     "FileSorter 保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;

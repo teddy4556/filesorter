@@ -60,6 +60,44 @@
 
 - **主区五张概览卡不再停在打开窗口那一秒**:实测同屏显示两个版本的事实 —— 侧栏「已归类 9 / 18 秒前」,主区「已归类 0 / 尚未处理」。根因:`MakeStatCard` 每次调用新建 TextBlock 后**返回值直接丢进 `Children.Add()`**,引用没人接住,而 `RefreshLive()` 每秒只调 `UpdateSidebarStats()`(侧栏),主区五张卡完全不碰。修法:`MakeStatCard` 改为返回值的 TextBlock,存进 `_cardProcessed` / `_cardUnmatched` / `_cardLast` / `_cardUptime` / `_cardActive`,新增 `UpdateMainCards()` 跟侧栏一起刷。
 - **`WrapCard()` 包装器**:`WrapPanel` 只能加 `Panel` 的子类,裸 `TextBlock` 加不进去(编译通过但视觉不对)。改成 `Border` 包装,标签/单位文案存 `TextBlock.Tag` 里由包装器取出。
+- **UI 保存链路测试(`UiSaveRoundTripTests.cs`,14 个)**:见下方「为什么以前测试全绿却抓不到 bug」。
+
+### 🧪 为什么以前测试全绿却抓不到 bug
+
+今天在「自动归类设置」窗口上连踩三个 bug(YAML 重复 key、`WatchFolders` getter 返回副本、双别名属性字段名不匹配),而当时 **118 个测试全部通过**。
+
+原因很简单:那些测试都直接调 `WatchFolderService` / `RuleEngine`,**完全绕过了 UI 的「改内存 → 写盘 → 读回」这条链**。功能坏着,测试是绿的。
+
+修法两步:
+
+1. **把 UI 逻辑抽成可测的公共方法**
+   - `WatchFolderWindow.SaveAndVerify(path, cfg)` — 写盘 + 读回对账(原来埋在 private `SaveAndReload()` 里,测试够不到)
+   - `WatchFolderWindow.MutateWatchFolders(cfg, mutate)` — 强制走 setter 回写
+
+   测试跑的是**真实代码路径**,不是复制品。
+
+2. **`UiSaveRoundTripTests.cs`(304 行,14 个测试)**
+   - 写盘往返:单/多目录、YAML 只有一个 watch key、子目录字段不重复、空列表也写键
+   - getter 返回副本:直接 Add 无效、加完能落盘、RemoveAt、ToggleEnabled、EditMode、连续多次改
+   - 双 key 读取:snake_case / camel_case 都认、保存后再存不丢配置
+
+### ✅ 测试有效性已验证(故障注入)
+
+光「测试通过」不算数。实测把 `MutateWatchFolders` 里那行 `cfg.WatchFolders = list` 删掉(即重现今天那个 bug):
+
+```
+注入前: 132/132 全绿
+注入后: 129 通过, 3 失败  ← MutateWatchFolders_Add / RemoveAt / RepeatedEdits
+```
+
+测试确实能抓到那个 bug。还原后 md5 回到 `33ed9eec`,与注入前完全一致。
+
+### 🪤 写测试时踩的坑(C# raw string + YAML)
+
+1. **C# raw string 的缩进剥离**:`$$"""` 会按结束标记位置剥离公共缩进,后面 `+=` 拼的片段不带那层缩进,两段不一致,YAML 直接报 `found invalid mapping`。**报错完全不提示缩进**,极难定位。最终改成 `StringBuilder` 逐行拼。
+2. **改用正斜杠反而炸**:plain scalar 里的冒号是 YAML key 分隔符,`C:/` 后面跟路径会被当成嵌套映射。绕一圈发现**反斜杠才是对的**(跟项目其它测试一致)。
+3. **PyYAML 能解析但 YamlDotNet 报错时,以 YamlDotNet 为准** —— 两者 YAML 规范实现有差异,拿 python 的结果验 C# 的代码会白忙。
+
 - **「最近一次」语义修正**:`_lastProcessedUtc` 原来**只在 `res.Success` 时更新**,未命中不算「处理」。但那 12 个文件明明被扫过、读过规则、判定过,界面显示「尚未处理」等于在制造假警报 —— 而这一行的用途是回答「监听器还活着吗」。改为归类/未命中/失败三种判定都更新时间戳。
 
 ### ⚠️ 已知限制
