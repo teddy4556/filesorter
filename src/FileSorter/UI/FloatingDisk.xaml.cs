@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
@@ -7,8 +8,9 @@ namespace FileSorter.UI;
 
 public partial class FloatingDisk : Window
 {
+    // _dragStart = 按下瞬间光标相对窗口左上角的 DIP 偏移。拖动全程不变,
+    // 用于从「光标屏幕位置」反推「窗口左上角位置」。
     private System.Windows.Point _dragStart;
-    private System.Windows.Point _windowStart;
     private bool _isDragging;
 
     // 2026-09-28: 注册表 HKCU\Software\FileSorter 存 FloatingDisk 位置(用户拖动后持久化)
@@ -101,7 +103,6 @@ public partial class FloatingDisk : Window
     private void OnMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         _dragStart = e.GetPosition(this);
-        _windowStart = new System.Windows.Point(Left, Top);
         _isDragging = true;
         CaptureMouse();
         // 拖动期间阻止 Image 重渲染(冻结后已无重渲染,但 Layout 仍会重画背景)
@@ -109,13 +110,32 @@ public partial class FloatingDisk : Window
         e.Handled = true;
     }
 
+    // 2026-10-19 修 BUG(两轮):
+    //   第一轮根因:老代码用 PointToScreen()(返回**物理像素**)减去 GetPosition()(**DIP**),
+    //     150% DPI 下 newLeft 恒撞 clamp 上限 → 图标完全钉死在右下角,拖不动。
+    //   第一轮修法(v1,有缺陷):改成 GetPosition 两次之差的 DIP 增量。
+    //     但 GetPosition 返回**光标相对窗口**的坐标,窗口跟手移动后该值被自我抵消,
+    //     窗口每帧永远落后光标一到两帧 —— 表现为"拖动距离和鼠标移动距离不是 1:1"。
+    //   本轮修法(v2):锚定**光标在屏幕上的绝对位置**,窗口位置 = 光标屏幕位 - 按下时的抓取偏移。
+    //     窗口移动不再反过来影响下一次计算,位移严格 1:1。
+    //     关键:PointToScreen 返回物理像素,必须用 TransformFromDevice 显式转回 DIP 才能跟 Left/Top 同单位。
     private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (!_isDragging) return;
-        // 用屏幕坐标计算位移,避免窗口位置变化时 GetPosition(this) 偏差
-        var screenPos = PointToScreen(e.GetPosition(this));
-        var newLeft = screenPos.X - _dragStart.X;
-        var newTop = screenPos.Y - _dragStart.Y;
+
+        // capture 丢失(Alt+Tab / 焦点切换 / 在窗口外松手)时收到 LeftButton=Released,主动收尾
+        if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) { EndDrag(); return; }
+
+        // 光标的**屏幕**坐标(DIP)。用 CompositionTarget 的 TransformFromDevice 把
+        // PointToScreen 的物理像素换算成 DIP —— 不换算就跟下面的 Left/Top 不同单位,重蹈 v0 覆辙。
+        var src = PresentationSource.FromVisual(this);
+        var screenDip = src?.CompositionTarget?.TransformFromDevice
+                            .Transform(PointToScreen(e.GetPosition(this)))
+                      ?? e.GetPosition(this);
+
+        // 窗口左上角 = 光标屏幕位 - 抓取点偏移(抓取点是按下时的窗口内 DIP 坐标,全程不变)
+        var newLeft = screenDip.X - _dragStart.X;
+        var newTop = screenDip.Y - _dragStart.Y;
 
         // 2026-09-28: 拖动期间把 window 限制在屏幕内(防止用户拖出可见区域导致图标消失)
         var work = SystemParameters.WorkArea;
@@ -132,9 +152,14 @@ public partial class FloatingDisk : Window
 
     private void OnMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        EndDrag();
+    }
+
+    private void EndDrag()
+    {
         if (!_isDragging) return;
         _isDragging = false;
-        ReleaseMouseCapture();
+        if (IsMouseCaptured) ReleaseMouseCapture();
         SavePosition();
     }
 

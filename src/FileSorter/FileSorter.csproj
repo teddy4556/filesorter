@@ -5,14 +5,16 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+    <NoWarn>CS8002</NoWarn>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AssemblyName>filesorter</AssemblyName>
     <RootNamespace>FileSorter</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <!-- 2026-09-29: manifest enables PerMonitorV2 DPI awareness (150% DPI fix) -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="15.1.6" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.7" />
@@ -27,5 +29,18 @@
     <None Include="app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!-- 2026-10-19: 毛玻璃 UI 主题 + 自动归类管理窗口
+       这两个 xaml 必须显式声明为 Page。SDK 默认 glob 虽然会收 *.xaml,
+       但资源字典(Theme.xaml)被 MergedDictionaries 引用时构建动作必须是 Resource,
+       显式声明避免 DefaultItem 与显式 Item 重复导致 NETSDK1022。 -->
+  <ItemGroup>
+    <Page Remove="UI\Theme.xaml" />
+    <Page Remove="UI\WatchFolderWindow.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="UI\Theme.xaml" />
+    <Page Include="UI\WatchFolderWindow.xaml" />
   </ItemGroup>
 </Project>
