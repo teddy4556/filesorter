@@ -49,8 +49,14 @@ public class WatchFolderService : IDisposable
     private int _processedCount;
     private int _unmatchedCount;
     private int _failedCount;
+    /// <summary>最后一次「做出判定」的时间(归类 / 未命中 / 失败 都算)。</summary>
     private DateTime _lastProcessedUtc = DateTime.MinValue;
     private readonly Dictionary<string, int> _perFolderCount = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>按目录统计失败数(键为目录路径)。
+    /// ⚠️ 2026-10-20 加:之前只有总数 FailedCount,UI 侧栏想显示「这个目录失败几个」
+    /// 无数据可拿,失败在界面上完全静默 —— 权限不足 / 目标目录被锁这类问题没人看得见。</summary>
+    private readonly Dictionary<string, int> _perFolderFailed = new(StringComparer.OrdinalIgnoreCase);
     private readonly DateTime _startedUtc = DateTime.UtcNow;
 
     /// <summary>本次会话已成功归类的文件数。</summary>
@@ -74,6 +80,12 @@ public class WatchFolderService : IDisposable
         get { lock (_perFolderCount) return new Dictionary<string, int>(_perFolderCount); }
     }
 
+    /// <summary>按监听目录统计失败数(键为目录路径)。</summary>
+    public IReadOnlyDictionary<string, int> PerFolderFailedCount
+    {
+        get { lock (_perFolderFailed) return new Dictionary<string, int>(_perFolderFailed); }
+    }
+
     /// <summary>重置统计(UI 上「清零」按钮用)。</summary>
     public void ResetStats()
     {
@@ -82,6 +94,7 @@ public class WatchFolderService : IDisposable
         Volatile.Write(ref _failedCount, 0);
         _lastProcessedUtc = DateTime.MinValue;
         lock (_perFolderCount) _perFolderCount.Clear();
+        lock (_perFolderFailed) _perFolderFailed.Clear();
     }
 
     /// <summary>按当前配置启动(App 启动时调)。</summary>
@@ -220,11 +233,24 @@ public class WatchFolderService : IDisposable
         else if (!string.Equals(res.Error, "no rule matched", StringComparison.Ordinal))
         {
             Interlocked.Increment(ref _failedCount);
+            // 同样要记到目录上,不然 UI 侧栏看不出失败集中在哪个目录
+            var failFolder = FindOwningFolder(filePath);
+            if (failFolder is not null)
+            {
+                lock (_perFolderFailed)
+                    _perFolderFailed[failFolder] = _perFolderFailed.TryGetValue(failFolder, out var fc) ? fc + 1 : 1;
+            }
+            _lastProcessedUtc = DateTime.UtcNow;
             _log.Warn($"[watch] {Path.GetFileName(filePath)} 处理失败: {res.Error}");
         }
         else
         {
             Interlocked.Increment(ref _unmatchedCount);
+            // ⚠️ 这里也要更新时间戳(2026-10-20 改)。
+            // 原来只在 res.Success 分支更新,导致「全部未命中」时 UI 永远显示「尚未处理」——
+            // 可那 12 个文件明明被扫过、读过规则、判定过。界面在说谎。
+            // 这一行的用途是回答「监听器还活着吗」,不是「最后一次成功归类是什么时候」。
+            _lastProcessedUtc = DateTime.UtcNow;
             _log.Info($"[watch] {Path.GetFileName(filePath)} 未命中规则,原地不动");
         }
     }

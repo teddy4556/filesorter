@@ -287,14 +287,28 @@ public partial class WatchFolderWindow : Window
             ? $"{(int)uptime.TotalHours} 小时 {uptime.Minutes} 分"
             : $"{uptime.Minutes} 分 {uptime.Seconds} 秒";
 
-        wrap.Children.Add(MakeStatCard("本次会话已归类",
-            svc?.ProcessedCount.ToString() ?? "—", "个文件", Color.FromRgb(0x07, 0xC1, 0x60)));
-        wrap.Children.Add(MakeStatCard("未命中(原地不动)",
-            svc?.UnmatchedCount.ToString() ?? "—", "个文件", Color.FromRgb(0xAA, 0xAA, 0xAA)));
-        wrap.Children.Add(MakeStatCard("最近一次处理", lastText, "", Color.FromRgb(0x0F, 0x8F, 0xD4)));
-        wrap.Children.Add(MakeStatCard("运行时长", upText, "", Color.FromRgb(0x55, 0x55, 0x55)));
-        wrap.Children.Add(MakeStatCard("正在监听",
-            svc?.ActiveCount.ToString() ?? "—", "个目录", Color.FromRgb(0x07, 0xC1, 0x60)));
+        // ⚠️ 接住返回值存字段 —— 不存的话每秒刷新碰不到这几张卡(见 MakeStatCard 注释)
+        _cardProcessed = MakeStatCard("本次会话已归类",
+            svc?.ProcessedCount.ToString() ?? "—", "个文件", Color.FromRgb(0x07, 0xC1, 0x60));
+        _cardUnmatched = MakeStatCard("未命中(原地不动)",
+            svc?.UnmatchedCount.ToString() ?? "—", "个文件", Color.FromRgb(0xAA, 0xAA, 0xAA));
+        _cardLast = MakeStatCard("最近一次处理", lastText, "", Color.FromRgb(0x0F, 0x8F, 0xD4));
+        _cardUptime = MakeStatCard("运行时长", upText, "", Color.FromRgb(0x55, 0x55, 0x55));
+        _cardActive = MakeStatCard("正在监听",
+            svc?.ActiveCount.ToString() ?? "—", "个目录", Color.FromRgb(0x07, 0xC1, 0x60));
+
+        // WrapPanel 只能放 Panel 的子元素,裸 TextBlock 加不进去 ——
+        // 用 Border 包一层,顺手把卡片的圆角/边框/内边距搬到这里(值本身留在内层)
+        foreach (var (t, color) in new[]
+                 {
+                     (_cardProcessed, Color.FromRgb(0x07, 0xC1, 0x60)),
+                     (_cardUnmatched, Color.FromRgb(0xAA, 0xAA, 0xAA)),
+                     (_cardLast, Color.FromRgb(0x0F, 0x8F, 0xD4)),
+                     (_cardUptime, Color.FromRgb(0x55, 0x55, 0x55)),
+                     (_cardActive, Color.FromRgb(0x07, 0xC1, 0x60)),
+                 })
+            wrap.Children.Add(WrapCard(t, color));
+
         return wrap;
     }
 
@@ -485,9 +499,50 @@ public partial class WatchFolderWindow : Window
         // 状态栏数字每秒变,重建代价太大 —— 只更新文本
         if (SidePanel.Children.Count == 0) BuildSidebar();
         UpdateSidebarStats();
+        UpdateMainCards();
     }
 
-    private TextBlock? _liveBig, _liveProcessed, _liveUnmatched, _liveLast, _liveUptime;
+    /// <summary>主区五张概览卡的每秒刷新。
+    /// ⚠️ 这段以前根本不存在 —— 侧栏每秒变、主区卡永远停在打开窗口那一秒,
+    /// 同一屏出现两个版本的事实(实测:侧栏 9 / 主区 0)。
+    /// 它们和侧栏读的是同一个 service,所以必须一起更新,不能只顾一边。</summary>
+    private void UpdateMainCards()
+    {
+        var svc = _service;
+        if (svc is null) return;
+
+        if (_cardProcessed is not null)
+            _cardProcessed.Text = svc.ProcessedCount.ToString();
+        if (_cardUnmatched is not null)
+            _cardUnmatched.Text = svc.UnmatchedCount.ToString();
+        if (_cardActive is not null)
+            _cardActive.Text = svc.ActiveCount.ToString();
+
+        if (_cardLast is not null)
+        {
+            // 和侧栏用同一个判定逻辑:任何一次做出判定(归类/未命中/失败)都算「处理过」。
+            // 旧代码只在 res.Success 时更新时间,导致全部未命中时永远显示「尚未处理」——
+            // 而那 12 个文件明明被扫过了,界面却在制造假警报。
+            _cardLast.Text = svc.LastProcessedUtc == DateTime.MinValue
+                ? "尚未处理"
+                : FormatAgo(DateTime.UtcNow - svc.LastProcessedUtc);
+        }
+
+        if (_cardUptime is not null)
+        {
+            var up = svc.Uptime;
+            _cardUptime.Text = up.TotalHours >= 1
+                ? $"{(int)up.TotalHours} 小时 {up.Minutes} 分"
+                : $"{up.Minutes} 分 {up.Seconds} 秒";
+        }
+    }
+
+    private TextBlock? _liveBig, _liveProcessed, _liveUnmatched, _liveFailed, _liveLast, _liveUptime;
+
+    /// <summary>主区五张概览卡里「值」那个 TextBlock 的引用。
+    /// 跟侧栏的 _live* 是同一批数据的两个视图,必须一起刷新,否则两处数字打架
+    /// (实测踩过:侧栏 9 / 主区 0,同一屏显示两个版本的事实)。</summary>
+    private TextBlock? _cardProcessed, _cardUnmatched, _cardLast, _cardUptime, _cardActive;
     private System.Windows.Shapes.Ellipse? _liveDot;
 
     private void BuildSidebar()
@@ -552,6 +607,10 @@ public partial class WatchFolderWindow : Window
 
         _liveProcessed = MakeStatLine("本次会话已归类", "0", PrimaryBrushColor());
         _liveUnmatched = MakeStatLine("未命中(原地不动)", "0", TextDisabled());
+        // ⚠️ 失败以前只存在 service 里,UI 一次都没露过脸 ——
+        // 权限不足 / 目标目录被锁这类问题完全静默,用户根本不知道有文件没归进去。
+        // 失败数 > 0 时变红,0 时保持灰,平时不抢眼但出事了第一眼就能看到。
+        _liveFailed = MakeStatLine("处理失败", "0", TextDisabled());
         _liveLast = MakeStatLine("最近一次", "—", InfoColor());
         _liveUptime = MakeStatLine("运行时长", "—", TextSecondary());
         foreach (var host in _statLineHosts) cardSp.Children.Add(host);
@@ -565,6 +624,7 @@ public partial class WatchFolderWindow : Window
             new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x9A)), margin: new Thickness(2, 0, 0, 6)));
 
         var perFolder = _service?.PerFolderCount ?? new Dictionary<string, int>();
+        var perFailed = _service?.PerFolderFailedCount ?? new Dictionary<string, int>();
         var running = new HashSet<string>(
             _foldersToRunningPaths(), StringComparer.OrdinalIgnoreCase);
 
@@ -577,7 +637,8 @@ public partial class WatchFolderWindow : Window
         foreach (var w in folders)
         {
             perFolder.TryGetValue(w.Path, out var n);
-            SidePanel.Children.Add(MakeSideItem(w.Path, running.Contains(w.Path) ? (n > 0 ? n.ToString() : "0") : "停用"));
+            perFailed.TryGetValue(w.Path, out var f);
+            SidePanel.Children.Add(MakeSideFolder(w, running.Contains(w.Path), n, f));
         }
     }
 
@@ -600,6 +661,14 @@ public partial class WatchFolderWindow : Window
             _liveProcessed.Text = svc.ProcessedCount.ToString();
         if (_liveUnmatched is not null)
             _liveUnmatched.Text = svc.UnmatchedCount.ToString();
+        if (_liveFailed is not null)
+        {
+            _liveFailed.Text = svc.FailedCount.ToString();
+            // 有失败就变红,平时保持灰色不抢眼
+            _liveFailed.Foreground = svc.FailedCount > 0
+                ? new SolidColorBrush(Color.FromRgb(0xD9, 0x3A, 0x3A))
+                : TextDisabled();
+        }
         if (_liveLast is not null)
         {
             _liveLast.Text = svc.LastProcessedUtc == DateTime.MinValue
@@ -656,42 +725,115 @@ public partial class WatchFolderWindow : Window
 
     private readonly List<UIElement> _statLineHosts = new();
 
-    private UIElement MakeSideItem(string name, string count)
+    /// <summary>
+    /// 「监听明细」里的一行 —— 两行式布局(2026-10-20 改)。
+    ///
+    /// 旧版是一行「● 目录名  374」,信息量太低:374 在主区概览卡里已经能看到,
+    /// 侧栏再列一遍没意义;而且模式/稳定期/失败数全靠点「调整」才看得到。
+    ///
+    /// 现在第一行放状态点 + 路径(悬停出完整路径),第二行放灰色小字:
+    ///     实时 · 稳定期 15 秒 · 本次 374 · 失败 2
+    /// 失败数 > 0 时转红,这是整个 UI 里唯一能暴露「文件没归进去」的地方。
+    /// </summary>
+    private UIElement MakeSideFolder(WatchFolder w, bool isRunning, int processed, int failed)
     {
-        var on = count != "停用";
-        var panel = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6, 8, 6) };
-        var g = new Grid();
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        g.Children.Add(new System.Windows.Shapes.Ellipse
+        var panel = new Border
         {
-            Width = 6, Height = 6,
-            Fill = on ? PrimaryBrushColor() : new SolidColorBrush(Color.FromRgb(0xC8, 0xC8, 0xC8)),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 6, 8, 6),
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+
+        var sp = new StackPanel();
+
+        // ---- 第一行:状态点 + 目录名 + 成功数 ----
+        var row1 = new Grid();
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        row1.Children.Add(new System.Windows.Shapes.Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            // 停用 = 灰点;运行中且有失败 = 琥珀色点(有东西没归进去,值得提醒)
+            Fill = !isRunning ? new SolidColorBrush(Color.FromRgb(0xC8, 0xC8, 0xC8))
+                 : failed > 0 ? new SolidColorBrush(Color.FromRgb(0xE6, 0xA2, 0x3C))
+                 : PrimaryBrushColor(),
             VerticalAlignment = VerticalAlignment.Center
         });
-        g.Children.Add(new TextBlock
+
+        var pathText = new TextBlock
         {
-            Text = Path.GetFileName(name.TrimEnd('\\')) is { Length: > 0 } n ? n : name,
+            Text = Path.GetFileName(w.Path.TrimEnd('\\')) is { Length: > 0 } n ? n : w.Path,
             FontSize = 11,
             FontFamily = new FontFamily("Consolas, Courier New"),
-            Foreground = TextSecondary(),
+            Foreground = isRunning ? TextSecondary() : TextDisabled(),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            ToolTip = name
-        });
+            ToolTip = w.Path
+        };
+        Grid.SetColumn(pathText, 1);
+        row1.Children.Add(pathText);
+
         var cnt = new TextBlock
         {
-            Text = count,
+            Text = isRunning ? processed.ToString() : "停用",
             FontSize = 10.5,
             Foreground = TextDisabled(),
             VerticalAlignment = VerticalAlignment.Center
         };
         Grid.SetColumn(cnt, 2);
-        g.Children.Add(cnt);
-        panel.Child = g;
+        row1.Children.Add(cnt);
+
+        sp.Children.Add(row1);
+
+        // ---- 第二行:模式 · 稳定期 · 失败 ----
+        var chips = new List<string>();
+        chips.Add(ModeLabel(w.Mode));
+        chips.Add(w.EffectiveSettleSeconds > 0 ? $"稳定期 {w.EffectiveSettleSeconds} 秒" : "默认稳定期");
+        if (w.Recursive) chips.Add("递归");
+
+        var chipRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(14, 3, 0, 0)
+        };
+        foreach (var c in chips)
+        {
+            chipRow.Children.Add(new TextBlock
+            {
+                Text = c,
+                FontSize = 10,
+                Foreground = TextTertiary(),
+                Margin = new Thickness(0, 0, 6, 0)
+            });
+        }
+        if (failed > 0)
+        {
+            chipRow.Children.Add(new TextBlock
+            {
+                Text = $"失败 {failed}",
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xD9, 0x3A, 0x3A)),
+                ToolTip = $"这个目录有 {failed} 个文件处理失败,点「查看日志」看原因"
+            });
+        }
+        sp.Children.Add(chipRow);
+
+        panel.Child = sp;
         return panel;
     }
+
+    /// <summary>WatchMode -> 中文标签。定时模式优先显示真实间隔而不是"每 5 分钟"这种死说法。</summary>
+    private static string ModeLabel(WatchMode m) => m switch
+    {
+        WatchMode.Realtime => "实时",
+        WatchMode.Every5Minutes => "5 分钟",
+        WatchMode.Every30Minutes => "30 分钟",
+        _ => m.ToString()
+    };
 
     // ================= 配置编辑 =================
 
@@ -988,9 +1130,35 @@ public partial class WatchFolderWindow : Window
         return dot;
     }
 
-    private UIElement MakeStatCard(string label, string value, string sub, Color valueColor)
+    /// <summary>主区概览卡。
+    /// ⚠️ 返回的是**值那个 TextBlock**,不是 Border —— 调用方必须接住引用存到字段,
+    /// 否则每秒刷新时只能重建整个卡片(太贵)或者干脆不更新(旧 bug)。
+    /// 2026-10-20 实测:侧栏每秒变、主区五张卡永远停在打开窗口那一秒的数字,
+    /// 根因就是这里返回 UIElement,引用被丢进了 Children.Add() 里没人拿。</summary>
+    private TextBlock MakeStatCard(string label, string value, string sub, Color valueColor)
     {
-        var card = new Border
+        var valueText = MakeText(value, 24, FontWeights.SemiBold, new SolidColorBrush(valueColor),
+            margin: new Thickness(0, 5, 0, 0));
+        // 标签和单位文案挂到 valueText 的 Tag 上,WrapCard 取出来拼进卡片里 ——
+        // 这样卡片重建(比如宽度变化)时不用重新查 label,也不会跟值脱节。
+        valueText.Tag = new StatCardMeta(label, sub);
+        return valueText;
+    }
+
+    private sealed record StatCardMeta(string Label, string Sub);
+
+    /// <summary>把「值」TextBlock 包成一张可视的卡片。Border 是 Panel 的子类,可以进 WrapPanel。</summary>
+    private static Border WrapCard(TextBlock valueText, Color accent)
+    {
+        var meta = valueText.Tag as StatCardMeta;
+        var sp = new StackPanel();
+        sp.Children.Add(MakeText(meta?.Label ?? "", 12, FontWeights.Normal, TextTertiary()));
+        sp.Children.Add(valueText);
+        if (!string.IsNullOrEmpty(meta?.Sub))
+            sp.Children.Add(MakeText(meta.Sub, 11, FontWeights.Normal, TextDisabled(),
+                margin: new Thickness(0, 5, 0, 0)));
+
+        return new Border
         {
             CornerRadius = new CornerRadius(8),
             Background = new SolidColorBrush(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF)),
@@ -998,17 +1166,9 @@ public partial class WatchFolderWindow : Window
             BorderThickness = new Thickness(1),
             Padding = new Thickness(16),
             Margin = new Thickness(0, 0, 10, 0),
-            MinWidth = 152
+            MinWidth = 152,
+            Child = sp
         };
-        var sp = new StackPanel();
-        sp.Children.Add(MakeText(label, 12, FontWeights.Normal, TextTertiary()));
-        sp.Children.Add(MakeText(value, 24, FontWeights.SemiBold, new SolidColorBrush(valueColor),
-            margin: new Thickness(0, 5, 0, 0)));
-        if (!string.IsNullOrEmpty(sub))
-            sp.Children.Add(MakeText(sub, 11, FontWeights.Normal, TextDisabled(),
-                margin: new Thickness(0, 5, 0, 0)));
-        card.Child = sp;
-        return card;
     }
 
     /// <summary>ComboBox 的显示项 + 实际值。</summary>
