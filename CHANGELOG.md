@@ -2,13 +2,20 @@
 
 所有 notable 改动记录在这里。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-> **🎯 速览**:v2.8.0 是当前版本(2026-10-19),含自动归类监听目录(rules.yaml watch_folders)+ 毛玻璃管理窗口 + FloatingDisk 拖动物理 1:1。
+> **🎯 速览**:v2.8.1 是当前版本(2026-11-13),修 Twitter 归档路径段归一(Bug #76:作者名末尾空格/句点 + `.`/`..` 越位)。
+> v2.8.0(2026-10-19)含自动归类监听目录(rules.yaml watch_folders)+ 毛玻璃管理窗口 + FloatingDisk 拖动物理 1:1。
 >
 > 历史 → [git log](https://github.com/teddy4556/filesorter/commits/main)
 
 ---
 
 ## [Unreleased] — 待发布
+
+待开发功能待定。
+
+---
+
+## [2.8.1] — 2026-11-13
 
 ### 🐛 修复
 
