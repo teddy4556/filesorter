@@ -6,7 +6,7 @@
 | 类型 | Windows 桌面文件分类工具(类 DropIt) |
 | 用户 | 单人自用 |
 | 技术栈 | .NET 8 SDK + WPF + C# |
-| 工作目录(本地)| `D:\hermes-工作目录\filesorter\`(Windows 笔记本) |
+| 工作目录(本地)| `D:\示例\filesorter\`(Windows 笔记本) |
 | 工作目录(NAS)| `/opt/data/projects/filesorter/`(容器,本设计文档所在) |
 | 同步方式 | NAS → Windows 通过 windows-mcp FileSystem 同步 |
 
@@ -40,7 +40,7 @@
 | 规则改完到生效 | < 2 秒(热加载,无需重启软件) |
 | 内存占用 | < 50MB(常驻) |
 | exe 体积 | < 15MB(单文件,无外部依赖) |
-| 多级目录支持 | twitter 文件名 → 自动分到 `D:\分类\图片\twitter\@hahaoy8\` |
+| 多级目录支持 | twitter 文件名 → 自动分到 `D:\分类\图片\twitter\@authorH\` |
 | 文件夹拖入 | 拖入文件夹时弹"递归/顶层/取消"对话框,不能静默处理 |
 
 ---
@@ -138,8 +138,8 @@ rules:
     destination: images
 
   # 规则 4:路径模板(支持多级目录)
-  # 文件名:twitter_(@hahaoy8)_肉丝儿_20260730-085445_2082751743373496825.jpg
-  # 目标:D:\分类\图片\twitter\@hahaoy8\<原文件名>
+  # 文件名:twitter_(@authorH)_测试昵称_20260730-085445_2082751743373496825.jpg
+  # 目标:D:\分类\图片\twitter\@authorH\<原文件名>
   - name: 社交媒体图片
     type: path_template
     extensions: [jpg, jpeg, png, gif, webp]
@@ -160,8 +160,8 @@ rules:
 
 | Token | 含义 | 例 |
 |---|---|---|
-| `{filename}` | 完整文件名(含扩展名)| `twitter_(@hahaoy8)_...jpg` |
-| `{stem}` | 不含扩展名的文件名 | `twitter_(@hahaoy8)_肉丝儿_20260730-...` |
+| `{filename}` | 完整文件名(含扩展名)| `twitter_(@authorH)_...jpg` |
+| `{stem}` | 不含扩展名的文件名 | `twitter_(@authorH)_测试昵称_20260730-...` |
 | `{ext}` | 仅扩展名(小写,不带点)| `jpg` |
 | `{date:yyyy-MM}` | 文件修改日期 | `2026-07` |
 | `{date:yyyy}` | 年份 | `2026` |
@@ -329,18 +329,18 @@ FileAction.Move/Copy(src, dest)
 ### 7.1 目录约定
 
 - 容器(NAS)侧:`/opt/data/projects/filesorter/`(本文件 + C# 代码)
-- Windows 笔记本侧:`D:\hermes-工作目录\filesorter\`(build 用)
+- Windows 笔记本侧:`D:\示例\filesorter\`(build 用)
 
 每次代码改动后,我用 windows-mcp FileSystem 同步整个目录到 Windows 笔记本,然后跑 `dotnet publish`。
 
 ### 7.2 构建命令
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o D:\hermes-工作目录\filesorter\dist\
+cd D:\示例\filesorter
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o D:\示例\filesorter\dist\
 ```
 
-产物:`D:\hermes-工作目录\filesorter\dist\filesorter.exe`(< 15MB)。
+产物:`D:\示例\filesorter\dist\filesorter.exe`(< 15MB)。
 
 ### 7.3 依赖
 
@@ -362,7 +362,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 | M7: SendTo 集成 | 写快捷方式到 SendTo | 右键菜单出现 |
 | M8: 端到端验证 | 全流程手动跑通 | 用户签字 |
 | M9: 开机自启动 | `--install` / `--uninstall` 命令 + 注册表读写 | 注册表项存在 + 重启后自动起 |
-| M10: 路径模板规则 | path_template 类型 + 正则抽取 + 多级目录 | twitter 文件分到 `D:\分类\图片\twitter\@hahaoy8\` |
+| M10: 路径模板规则 | path_template 类型 + 正则抽取 + 多级目录 | twitter 文件分到 `D:\分类\图片\twitter\@authorH\` |
 | M11: 路径编辑 GUI | EditPathsWindow + OpenFolderDialog + 原子保存 | 改一个路径 → 保存 → 2 秒内规则生效 |
 | M12: 文件夹对话框 | 拖入文件夹时弹"递归/顶层/取消"对话框 | 拖入 10 个文件的文件夹 → 看到 3 选项对话框 |
 

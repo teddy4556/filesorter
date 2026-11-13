@@ -11,7 +11,7 @@
 **Spec:** `/opt/data/projects/filesorter/docs/design.md`
 
 **Working dir (NAS):** `/opt/data/projects/filesorter/`
-**Working dir (Windows):** `D:\hermes-工作目录\filesorter\`
+**Working dir (Windows):** `D:\示例\filesorter\`
 **Sync:** use `windows-mcp` FileSystem to push code from NAS → Windows. All `dotnet build/publish` runs on Windows.
 
 ---
@@ -175,7 +175,7 @@ python3 sync_to_windows.py
 On Windows (via PowerShell tool call):
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
+cd D:\示例\filesorter
 dotnet restore
 dotnet build -c Debug
 dotnet test -c Debug
@@ -286,7 +286,7 @@ public class RuleEngineLoadTests
 - [ ] **Step 2: Run tests, expect 3 failures**
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
+cd D:\示例\filesorter
 dotnet test --filter "FullyQualifiedName~RuleEngineLoadTests"
 ```
 
@@ -462,9 +462,9 @@ public class RuleMatchTests
     [Fact]
     public void Match_PathTemplate_TwitterPictureGoesToNestedFolder()
     {
-        var r = RuleEngine.Match(Cfg(), @"C:\in\twitter_(@hahaoy8)_肉丝儿_20260730.jpg");
+        var r = RuleEngine.Match(Cfg(), @"C:\in\twitter_(@authorH)_测试昵称_20260730.jpg");
         Assert.NotNull(r);
-        Assert.Equal(@"D:\cat\img\twitter\@hahaoy8", r!.DestinationPath);
+        Assert.Equal(@"D:\cat\img\twitter\@authorH", r!.DestinationPath);
     }
 
     [Fact]
@@ -1079,7 +1079,7 @@ public class TrayIcon : IDisposable
 On Windows:
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
+cd D:\示例\filesorter
 dotnet build -c Debug
 # Manual run:
 .\src\FileSorter\bin\Debug\net8.0-windows\filesorter.exe
@@ -1432,7 +1432,7 @@ internal static class Program
 On Windows:
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
+cd D:\示例\filesorter
 dotnet build -c Debug
 .\src\FileSorter\bin\Debug\net8.0-windows\filesorter.exe --install
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v FileSorter
@@ -1497,16 +1497,16 @@ public class IntegrationTests : IDisposable
                 path: '{{destinations.images}}\{{1}}\@{{2}}'
             """);
 
-        var src = Path.Combine(_tmp, "twitter_(@hahaoy8)_肉丝儿_20260730-085445_2082751743373496825.jpg");
+        var src = Path.Combine(_tmp, "twitter_(@authorH)_测试昵称_20260730-085445_2082751743373496825.jpg");
         File.WriteAllText(src, "x");
 
         var svc = new ClassifierService(cfg, dryRun: false);
         var r = svc.ClassifyOne(src);
 
         Assert.True(r.Success);
-        var expectedDir = Path.Combine(_tmp, "img", "twitter", "@hahaoy8");
+        var expectedDir = Path.Combine(_tmp, "img", "twitter", "@authorH");
         Assert.True(Directory.Exists(expectedDir), $"missing {expectedDir}");
-        var expectedFile = Path.Combine(expectedDir, "twitter_(@hahaoy8)_肉丝儿_20260730-085445_2082751743373496825.jpg");
+        var expectedFile = Path.Combine(expectedDir, "twitter_(@authorH)_测试昵称_20260730-085445_2082751743373496825.jpg");
         Assert.True(File.Exists(expectedFile), $"missing {expectedFile}");
     }
 }
@@ -1816,16 +1816,16 @@ git commit -m "M12: folder drop dialog (recursive / top-level / cancel)"
 - [ ] **Step 1: Build release**
 
 ```powershell
-cd D:\hermes-工作目录\filesorter
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o D:\hermes-工作目录\filesorter\dist\
+cd D:\示例\filesorter
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o D:\示例\filesorter\dist\
 ```
 
-Expected: `D:\hermes-工作目录\filesorter\dist\filesorter.exe` exists, size < 15 MB.
+Expected: `D:\示例\filesorter\dist\filesorter.exe` exists, size < 15 MB.
 
 - [ ] **Step 2: Run the exe, verify tray icon**
 
 ```powershell
-D:\hermes-工作目录\filesorter\dist\filesorter.exe
+D:\示例\filesorter\dist\filesorter.exe
 ```
 
 - [ ] **Step 3: Drag a `.jpg` to floating disk → moves to `D:\分类\图片\`
@@ -1864,13 +1864,13 @@ When code lives in NAS at `/opt/data/projects/filesorter/`, sync to Windows via 
 import os, urllib.request, json
 
 # (use the mcp_call.py helpers from session — see skill windows-mcp-manual-start)
-# Walk all files under src/ and tests/, mirror to D:\hermes-工作目录\filesorter\
+# Walk all files under src/ and tests/, mirror to D:\示例\filesorter\
 ```
 
 For manual one-off sync, copy individual files via:
 
 ```
-mcp__windows-mcp__FileSystem {mode:"write", path:"D:\\hermes-工作目录\\filesorter\\<relative>", content:"<file content>"}
+mcp__windows-mcp__FileSystem {mode:"write", path:"D:\\示例\\filesorter\\<relative>", content:"<file content>"}
 ```
 
 For initial bulk push, do it once after M2 completes (small enough to fit in one script).

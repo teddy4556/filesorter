@@ -23,7 +23,7 @@ Thumbs.db
 *.bak-*.*
 *.gitignore.bak-*
 
-## Local-only debug tooling — hardcodes C:\Users\yaoyx\... and D:\hermes-工作目录\...
+## Local-only debug tooling — hardcodes the user's real local paths (C:\Users\<user>\... and D:\<workdir>\...)
 ## Publishing it to a public repo leaks personal paths.
 probe-runner/
 

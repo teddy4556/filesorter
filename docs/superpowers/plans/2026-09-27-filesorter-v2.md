@@ -363,7 +363,7 @@ public class NameTemplatePathBuilderTests
             baseDestination: "D:\\cat\\img",
             template: "{platform}_@{author}",
             mappings: null,
-            captured: new[] { "twitter", "hahaoy8" });
+            captured: new[] { "twitter", "authorH" });
         Assert.Equal(@"D:\cat\img", path);
     }
 
@@ -378,7 +378,7 @@ public class NameTemplatePathBuilderTests
             baseDestination: "D:\\cat\\img",
             template: "{platform}_@{author}",
             mappings: mappings,
-            captured: new[] { "twitter", "hahaoy8" });
+            captured: new[] { "twitter", "authorH" });
         Assert.Equal(@"D:\cat\img\twitter", path);
     }
 
@@ -394,8 +394,8 @@ public class NameTemplatePathBuilderTests
             baseDestination: "D:\\cat\\img",
             template: "{platform}_@{author}",
             mappings: mappings,
-            captured: new[] { "twitter", "hahaoy8" });
-        Assert.Equal(@"D:\cat\img\twitter\hahaoy8", path);
+            captured: new[] { "twitter", "authorH" });
+        Assert.Equal(@"D:\cat\img\twitter\authorH", path);
     }
 
     [Fact]
@@ -654,9 +654,9 @@ public void Match_NameTemplate_AutoRegex_GoesToMappingPath()
             }
         }
     };
-    var r = RuleEngine.Match(cfg, @"C:\in\twitter_@hahaoy8_xxx.jpg");
+    var r = RuleEngine.Match(cfg, @"C:\in\twitter_@authorH_xxx.jpg");
     Assert.NotNull(r);
-    Assert.Equal(@"D:\cat\img\twitter\hahaoy8", r!.DestinationPath);
+    Assert.Equal(@"D:\cat\img\twitter\authorH", r!.DestinationPath);
 }
 ```
 
@@ -1521,7 +1521,7 @@ Append a new section to README.md before the "已知限制" section:
 ```
 
 → 自动生成 regex `^([a-zA-Z0-9]+)_@([a-zA-Z0-9]+)_([a-zA-Z0-9]+)$`
-→ 文件 `twitter_@hahaoy8_xxx.jpg` 分类到 `D:\示例\图片\twitter\hahaoy8\`
+→ 文件 `twitter_@authorH_xxx.jpg` 分类到 `D:\示例\图片\twitter\authorH\`
 
 ### token 类型
 

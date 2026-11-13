@@ -723,7 +723,7 @@ public partial class RuleEditor : Window
     /// 示例规则:社交媒体图片
     /// 文件名格式:{platform}_@{author}_{title}.{ext}
     /// → 目标路径:{destinations.images}\{platform}\{author}\{filename}
-    /// 例:twitter_@hahaoy8_mypic.jpg  →  D:\图片\twitter\hahaoy8\twitter_@hahaoy8_mypic.jpg
+    /// 例:twitter_@authorH_mypic.jpg  →  D:\图片\twitter\authorH\twitter_@authorH_mypic.jpg
     /// </summary>
     private void LoadExampleSocialMedia()
     {
@@ -756,7 +756,7 @@ public partial class RuleEditor : Window
         System.Windows.MessageBox.Show(
             "已添加示例规则:社交媒体图片\n\n" +
             "匹配文件名格式:{platform}_@{author}_{title}.{ext}\n" +
-            "例:twitter_@hahaoy8_xxxxx.jpg\n" +
+            "例:twitter_@authorH_xxxxx.jpg\n" +
             "目标路径:images \\ {platform} \\ {author}\n\n" +
             "修改目标目录、模板或映射后,记得点 保存 写入 rules.yaml。",
             "FileSorter", MessageBoxButton.OK, MessageBoxImage.Information);

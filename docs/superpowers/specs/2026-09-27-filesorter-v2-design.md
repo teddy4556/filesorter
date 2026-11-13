@@ -266,8 +266,8 @@ filesorter.exe --install-sendto         # 单独装 SendTo 快捷方式
 │ │ │ [+ Add mapping]                              │   │ │
 │ │ └────────────────────────────────────────────┘   │ │
 │ │                                                  │ │
-│ │ Test input: [twitter_@hahaoy8_xxx.jpg]           │ │
-│ │ → Result path: D:\示例\图片\Twitter\@hahaoy8    │ │
+│ │ Test input: [twitter_@authorH_xxx.jpg]           │ │
+│ │ → Result path: D:\示例\图片\Twitter\@authorH    │ │
 │ └──────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────┘
 ```

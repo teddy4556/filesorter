@@ -57,10 +57,10 @@ rules:
 
   # ===== 类型 D:正则抽取 + 多级目录(path_template) =====
   #
-  # 例:文件名 `twitter_(@hahaoy8)_肉丝儿_20260730.jpg`
+  # 例:文件名 `twitter_(@authorH)_测试昵称_20260730.jpg`
   #   group 1 = twitter (平台)
-  #   group 2 = hahaoy8 (作者,不含 @)
-  # → D:\示例\图片\twitter\@hahaoy8\
+  #   group 2 = authorH (作者,不含 @)
+  # → D:\示例\图片\twitter\@authorH\
   #
   - name: 社交媒体图片
     type: path_template

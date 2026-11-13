@@ -74,7 +74,7 @@ public class NameTemplatePathBuilderTests
             baseDestination: @"D:\cat\img",
             template: "{platform}_@{author}",
             mappings: null,
-            captured: new[] { "twitter", "hahaoy8" });
+            captured: new[] { "twitter", "authorH" });
         Assert.Equal(@"D:\cat\img", path);
     }
 
@@ -89,7 +89,7 @@ public class NameTemplatePathBuilderTests
             baseDestination: @"D:\cat\img",
             template: "{platform}_@{author}",
             mappings: mappings,
-            captured: new[] { "twitter", "hahaoy8" });
+            captured: new[] { "twitter", "authorH" });
         Assert.Equal(@"D:\cat\img\twitter", path);
     }
 
@@ -105,8 +105,8 @@ public class NameTemplatePathBuilderTests
             baseDestination: @"D:\cat\img",
             template: "{platform}_@{author}",
             mappings: mappings,
-            captured: new[] { "twitter", "hahaoy8" });
-        Assert.Equal(@"D:\cat\img\twitter\hahaoy8", path);
+            captured: new[] { "twitter", "authorH" });
+        Assert.Equal(@"D:\cat\img\twitter\authorH", path);
     }
 
     [Fact]
@@ -231,11 +231,11 @@ public class NameTemplatePathBuilderTests
             new() { Token = "{username}", Level = 1 },
         };
         var path = NameTemplatePathBuilder.BuildPath(
-            baseDestination: @"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\instagram",
+            baseDestination: @"D:\示例\图片\DCIM\instagram",
             template: "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}",
             mappings: mappings,
             captured: new[] { "nasa", "1234567890", "CwXYZ12345", "abc123", "20260927" });
-        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\instagram\nasa", path);
+        Assert.Equal(@"D:\示例\图片\DCIM\instagram\nasa", path);
     }
 
     // v2.3: Unicode token type — matches CJK / Cyrillic / accented chars
@@ -243,14 +243,14 @@ public class NameTemplatePathBuilderTests
     public void Compile_Unicode_Type_Matches_CJK()
     {
         var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
-        // Should match Chinese user_name like "夕阳无限好"
+        // Should match Chinese user_name like "测试昵称2"
         Assert.Contains(@"\p{L}", re);
         var match = System.Text.RegularExpressions.Regex.Match(
-            "twitter-(@Cuminsides0)-夕阳无限好-20260926-142011-2103852135859593660",
+            "twitter-(@authorG)-测试昵称2-20260926-142011-2103852135859593660",
             re);
         Assert.True(match.Success);
-        Assert.Equal("Cuminsides0", match.Groups[1].Value);
-        Assert.Equal("夕阳无限好", match.Groups[2].Value);
+        Assert.Equal("authorG", match.Groups[1].Value);
+        Assert.Equal("测试昵称2", match.Groups[2].Value);
     }
 
     [Fact]
@@ -276,11 +276,11 @@ public class NameTemplatePathBuilderTests
             new() { Token = "{user_id}", Level = 1 },
         };
         var path = NameTemplatePathBuilder.BuildPath(
-            baseDestination: @"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\twitter",
+            baseDestination: @"D:\示例\图片\DCIM\twitter",
             template: "twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}",
             mappings: mappings,
-            captured: new[] { "Cuminsides0", "夕阳无限好", "20260926-142011", "2103852135859593660" });
-        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\twitter\Cuminsides0", path);
+            captured: new[] { "authorG", "测试昵称2", "20260926-142011", "2103852135859593660" });
+        Assert.Equal(@"D:\示例\图片\DCIM\twitter\authorG", path);
     }
 
     // v2.3 Bug #46: support Explorer-style dedup suffix -N_N_N at end
@@ -290,11 +290,11 @@ public class NameTemplatePathBuilderTests
         var re = NameTemplateCompiler.CompileToRegex("twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}");
         // Should match Explorer-style dedup: -0_1_1_1, -1_1, etc.
         var match = System.Text.RegularExpressions.Regex.Match(
-            "twitter-(@Cuminsides0)-夕阳无限好-20260926-142011-2103852135859593660-0_1_1_1",
+            "twitter-(@authorG)-测试昵称2-20260926-142011-2103852135859593660-0_1_1_1",
             re);
         Assert.True(match.Success, $"Should match with -0_1_1_1 suffix");
-        Assert.Equal("Cuminsides0", match.Groups[1].Value);
-        Assert.Equal("夕阳无限好", match.Groups[2].Value);
+        Assert.Equal("authorG", match.Groups[1].Value);
+        Assert.Equal("测试昵称2", match.Groups[2].Value);
     }
 
     [Fact]

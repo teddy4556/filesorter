@@ -10,7 +10,7 @@
 - **右键"发送到"**:在资源管理器右键 → 发送到 → FileSorter
 - **SendTo 集成**:首次 `--install-sendto` 自动写 `%APPDATA%\Microsoft\Windows\SendTo\FileSorter.lnk`
 - **文件夹拖入对话框**:每次弹"递归 / 只处理顶层 / 取消"三选项(避免误操作)
-- **多级目录自动建**:`twitter#(@hahaoy8)#...#20260929.jpg` → `D:\示例\图片\twitter\@hahaoy8\20260929\`
+- **多级目录自动建**:`twitter#(@authorH)#...#20260929.jpg` → `D:\示例\图片\twitter\@authorH\20260929\`
 - **纯文本 YAML 规则**:手改也要能识别,2 秒内热加载
 - **可视化规则编辑器**:托盘菜单 → Open rules… 弹 GUI 编辑器,实时预览分类路径
 - **开机自启动**:`filesorter.exe --install` 写注册表,`--uninstall` 删

@@ -24,7 +24,7 @@ public class OrderMattersTests
                 ["documents"] = @"D:\分类\文档",
                 ["archives"]  = @"D:\分类\压缩包",
                 ["inbox"]     = @"D:\分类\未分类",
-                ["instagram"] = @"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\instagram"
+                ["instagram"] = @"D:\示例\图片\DCIM\instagram"
             },
             Rules = new()
             {
@@ -88,7 +88,7 @@ public class OrderMattersTests
         Assert.NotNull(r);
         Assert.Equal("Instagram 图片", r!.RuleName);
         // Per-username path under the instagram destination
-        Assert.StartsWith(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\instagram\", r.DestinationPath);
+        Assert.StartsWith(@"D:\示例\图片\DCIM\instagram\", r.DestinationPath);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class OrderMattersTests
             Destinations = new()
             {
                 ["images"]    = @"D:\分类\图片",
-                ["instagram"] = @"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\instagram"
+                ["instagram"] = @"D:\示例\图片\DCIM\instagram"
             },
             Rules = new()
             {
@@ -118,6 +118,6 @@ public class OrderMattersTests
 
         Assert.NotNull(r);
         Assert.Equal("Instagram 图片", r!.RuleName);
-        Assert.StartsWith(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\instagram\", r.DestinationPath);
+        Assert.StartsWith(@"D:\示例\图片\DCIM\instagram\", r.DestinationPath);
     }
 }

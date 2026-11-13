@@ -51,7 +51,7 @@ public class RuleEndToEndTests
     public void E2E_PathTemplate_WithAuthor()
     {
         // Simulate the famous twitter example: path_template should produce
-        //   D:\cat\img\twitter\@hahaoy8
+        //   D:\cat\img\twitter\@authorH
         var cfg = RuleEngine.LoadFromString("""
             version: 1
             default_action: move
@@ -67,18 +67,18 @@ public class RuleEndToEndTests
                 path: '{destinations.images}\{1}\@{2}'
             """);
 
-        var r = RuleEngine.Match(cfg, @"C:\downloads\twitter_(@hahaoy8)_肉丝儿.jpg");
+        var r = RuleEngine.Match(cfg, @"C:\downloads\twitter_(@authorH)_测试昵称.jpg");
 
         Assert.NotNull(r);
-        Assert.Equal(@"D:\cat\img\twitter\@hahaoy8", r!.DestinationPath);
+        Assert.Equal(@"D:\cat\img\twitter\@authorH", r!.DestinationPath);
     }
 
     [Fact]
     public void E2E_NameTemplate_MultiLevelMappings()
     {
         // 3-level mapping: platform / author / year
-        // File:  twitter_@hahaoy8_2026_pic.jpg
-        // Should produce: D:\cat\img\twitter\hahaoy8\2026
+        // File:  twitter_@authorH_2026_pic.jpg
+        // Should produce: D:\cat\img\twitter\authorH\2026
         // Note: mapping Token uses {name} form (without type spec) — this matches the
         // NameTemplatePathBuilder.ExtractTokenNames() convention.
         var cfg = RuleEngine.LoadFromString("""
@@ -103,10 +103,10 @@ public class RuleEndToEndTests
                     level: 3
             """);
 
-        var r = RuleEngine.Match(cfg, @"C:\downloads\twitter_@hahaoy8_2026_pic.jpg");
+        var r = RuleEngine.Match(cfg, @"C:\downloads\twitter_@authorH_2026_pic.jpg");
 
         Assert.NotNull(r);
-        Assert.Equal(@"D:\cat\img\twitter\hahaoy8\2026", r!.DestinationPath);
+        Assert.Equal(@"D:\cat\img\twitter\authorH\2026", r!.DestinationPath);
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class RuleEndToEndTests
             conflict_strategy: rename
             log_level: info
             destinations:
-              weibo: D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\微博
+              weibo: D:\示例\图片\DCIM\微博
             rules:
               - name: 微博
                 type: name_template
@@ -191,24 +191,24 @@ public class RuleEndToEndTests
                 destination: weibo
             """);
 
-        // Real test file 1: 清补凉好好吃 (Chinese username)
+        // Real test file 1: 作者甲 (Chinese username)
         // NameTemplatePathBuilder emits a DIRECTORY only (mappings → subdirs), so DestinationPath
         // does NOT include the extension. Assert on the directory shape + verify the rule actually
         // extracted username correctly (not falling through to "其他" / a different rule).
-        var r1 = RuleEngine.Match(cfg, @"D:\hermes-工作目录\filesorter\test-tweets\微博-清补凉好好吃-20260922-10.mp4");
+        var r1 = RuleEngine.Match(cfg, @"D:\示例\test-tweets\微博-作者甲-20260922-10.mp4");
         Assert.NotNull(r1);
         Assert.Equal("微博", r1!.RuleName);
-        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\微博\清补凉好好吃", r1.DestinationPath);
+        Assert.Equal(@"D:\示例\图片\DCIM\微博\作者甲", r1.DestinationPath);
 
-        // Real test file 2: 宋小睿爱唱歌 (Chinese username, jpg extension)
-        var r2 = RuleEngine.Match(cfg, @"D:\hermes-工作目录\filesorter\test-tweets\微博-宋小睿爱唱歌-20260926-4.jpg");
+        // Real test file 2: 作者乙 (Chinese username, jpg extension)
+        var r2 = RuleEngine.Match(cfg, @"D:\示例\test-tweets\微博-作者乙-20260926-4.jpg");
         Assert.NotNull(r2);
         Assert.Equal("微博", r2!.RuleName);
-        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\微博\宋小睿爱唱歌", r2.DestinationPath);
+        Assert.Equal(@"D:\示例\图片\DCIM\微博\作者乙", r2.DestinationPath);
     }
 
     // v2.7.5 Bug #56: Twitter rule with `unicode-dash` type for display names containing spaces
-    //   + ASCII parens like '饼干姐姐 (FortuneCutie00)' or 'bruce love you'. The RuleEngine's
+    //   + ASCII parens like '作者F (authorD00)' or 'bruce test'. The RuleEngine's
     //   MatchNameTemplate path must extract the user_name correctly (with space + parens intact).
     [Fact]
     public void E2E_Bug56_Twitter_NameTemplate_Accepts_Spaces_And_Parens()
@@ -221,7 +221,7 @@ public class RuleEndToEndTests
             conflict_strategy: rename
             log_level: info
             destinations:
-              twitter: D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\twitter
+              twitter: D:\示例\图片\DCIM\twitter
             rules:
               - name: Twitter
                 type: name_template
@@ -234,22 +234,22 @@ public class RuleEndToEndTests
                 destination: twitter
             """);
 
-        // Test 1: 'bruce love you' (English name with ASCII space) → user_name must capture the full name
-        var r1 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@loveyou2tf5)#bruce love you#20260927-011908#2104017966467817747.jpg");
+        // Test 1: 'bruce test' (English name with ASCII space) → user_name must capture the full name
+        var r1 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@authorC)#bruce test#20260927-011908#2104017966467817747.jpg");
         Assert.NotNull(r1);
         Assert.Equal("Twitter", r1!.RuleName);
-        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\twitter\loveyou2tf5", r1.DestinationPath);
+        Assert.Equal(@"D:\示例\图片\DCIM\twitter\authorC", r1.DestinationPath);
 
-        // Test 2: '饼干姐姐 (FortuneCutie00)' (Chinese + ASCII parens)
-        var r2 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@FortuneCutie01)#饼干姐姐 (FortuneCutie00)#20260927-051900#2104078329087504671.jpg");
+        // Test 2: '作者F (authorD00)' (Chinese + ASCII parens)
+        var r2 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@authorD)#作者F (authorD00)#20260927-051900#2104078329087504671.jpg");
         Assert.NotNull(r2);
         Assert.Equal("Twitter", r2!.RuleName);
-        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\twitter\FortuneCutie01", r2.DestinationPath);
+        Assert.Equal(@"D:\示例\图片\DCIM\twitter\authorD", r2.DestinationPath);
 
-        // Test 3: 'chelseaxny' (plain ASCII) — regression check, still matches
-        var r3 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@chelseaxny)#chelseaxny#20260927#2104114.jpg");
+        // Test 3: 'authorE' (plain ASCII) — regression check, still matches
+        var r3 = RuleEngine.Match(cfg, @"D:\inbox\twitter#(@authorE)#authorE#20260927#2104114.jpg");
         Assert.NotNull(r3);
         Assert.Equal("Twitter", r3!.RuleName);
-        Assert.Equal(@"D:\默认保存\下载\下载（待整理）\000-自动分类\DCIM\twitter\chelseaxny", r3.DestinationPath);
+        Assert.Equal(@"D:\示例\图片\DCIM\twitter\authorE", r3.DestinationPath);
     }
 }
