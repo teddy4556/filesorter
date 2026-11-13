@@ -37,10 +37,23 @@ public static class RuleEngine
         var ext = Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
         var stem = Path.GetFileNameWithoutExtension(filePath);
 
+        // v2.8 Bug #75: `default` 在 UI 里叫「默认(兜底)」,语义上必须最后生效。
+        //   旧实现在 foreach 里 `case "default": return ...` 立即返回,
+        //   结果 default 规则在列表里的位置变成了硬闸门 —— 排在第 1 位就吃掉后面全部规则,
+        //   排在最后则后面新增的规则永远轮不到。
+        //   现在:主循环跳过 default 并记住第一条 active 的,扫完再兜底。
+        Rule? fallbackRule = null;
+
         foreach (var rule in cfg.Rules)
         {
             // v2: skip inactive rules
             if (!rule.Active) continue;
+
+            if (string.Equals(rule.Type, "default", StringComparison.Ordinal))
+            {
+                fallbackRule ??= rule;
+                continue;
+            }
 
             switch (rule.Type)
             {
@@ -89,10 +102,13 @@ public static class RuleEngine
                         return ntResult;
                     break;
 
-                case "default":
-                    return DestResult(cfg, rule, rule.Destination!);
             }
         }
+
+        // 非 default 规则一个都没命中 → 才轮到兜底
+        if (fallbackRule != null)
+            return DestResult(cfg, fallbackRule, fallbackRule.Destination!);
+
         return null;
     }
 
@@ -163,7 +179,31 @@ public static class RuleEngine
         // we'll inject the real extension as the captured value for the {ext} group.
         var regexForStem = StripTrailingExtFromRegex(rawRegex, out bool strippedExtGroup);
 
-        var m = System.Text.RegularExpressions.Regex.Match(stem, regexForStem);
+        // v2.8 Bug #74: 双扩展名(如 小红书#xxx#…#010d7e#001#2026-10-13.zh.srt)
+        //   Path.GetFileNameWithoutExtension 只剥一层,stem 尾部残留 ".zh";
+        //   而正则那边 StripTrailingExtFromRegex 已把 .{ext} 整段剥掉 —— 一边剥一边不剥,
+        //   stem 尾部多出的 ".zh" 永远匹配不上 \d{4}-\d{2}-\d{2}$。
+        //   修法:生成逐层剥尾的 stem 候选,依次尝试,第一个命中即采用。
+        //   仅在 strippedExtGroup(模板自带 .{ext})时产生额外候选,单扩展名行为一字不变。
+        var stemCandidates = new System.Collections.Generic.List<string> { stem };
+        if (strippedExtGroup)
+        {
+            var deeper = stem;
+            for (int k = 0; k < 3; k++)
+            {
+                var dot = deeper.LastIndexOf('.');
+                if (dot <= 0) break;
+                deeper = deeper.Substring(0, dot);
+                stemCandidates.Add(deeper);
+            }
+        }
+
+        System.Text.RegularExpressions.Match m = default!;
+        foreach (var candidate in stemCandidates)
+        {
+            m = System.Text.RegularExpressions.Regex.Match(candidate, regexForStem);
+            if (m.Success) break;
+        }
         if (!m.Success) return false;
 
         var captured = new List<string>();
@@ -203,7 +243,7 @@ public static class RuleEngine
                     // v2.7+ Bug #52: Regex always ends with `(?:-\d+(_\d+)*)?$` (after `<ext>` group close),
                     //   so look for the LAST occurrence of that suffix, not EndsWith.
                     // Pattern: ^captures...\.(<ext>)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$
-                    const string dedupSuffix = @"(?:-\d+(_\d+)*)?$";
+                    const string dedupSuffix = @"(?:-\d+(_\d+)*|_\d+(?:_\d+)*)?$";  // v2.8: 同步 Bug #73 的 _N 分支  // v2.8: 同步 Bug #73 的 _N 分支
                     const string renameSuffix = @"(?:\s\(\d+\))?";
 
                     int idxDedup = regex.LastIndexOf(dedupSuffix, StringComparison.Ordinal);

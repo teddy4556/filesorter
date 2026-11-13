@@ -10,8 +10,11 @@ public class NameTemplateCompilerTests
     public void Compile_Token_Without_Type_Matches_Any_NonSep()
     {
         var re = NameTemplateCompiler.CompileToRegex("{platform}_@{author}_{title}");
-        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀 (?:-\\d+(_\\d+)*)?$
-        Assert.EndsWith(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀 (?:-\\d+(_\\d+)*|_\\d+(?:_\\d+)*)?$
+        // ⚠ v2.8 起 dedup 后缀有**两个分支**(见 NameTemplateCompiler line 52):
+        //   -\d+(_\d+)*      ← Explorer 风格 "-1_2"
+        //   _\d+(?:_\d+)*    ← v2.8 新增 "_1_2"
+        Assert.EndsWith(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*|_\d+(?:_\d+)*)?$", re);
     }
 
     [Fact]
@@ -47,7 +50,9 @@ public class NameTemplateCompilerTests
     {
         var re = NameTemplateCompiler.CompileToRegex("{a}_@{b}");
         Assert.Contains(@"_@", re);  // literal @
-        Assert.Contains("([a-zA-Z0-9._-]+)", re); // both tokens
+        // ⚠ v2.8 起默认 :any 字符类是 [a-zA-Z0-9._@\-]+ —— 含 @ (Twitter @username)
+        //   且 - 是转义写法,断言不能写死旧格式 [a-zA-Z0-9._-]+
+        Assert.Contains("([a-zA-Z0-9._@\\-]+)", re); // both tokens
     }
 
     [Fact]
@@ -55,7 +60,8 @@ public class NameTemplateCompilerTests
     {
         var re = NameTemplateCompiler.CompileToRegex("{name}.{ext}");
         // compiler 现在在 $ 前允许 optional Windows rename 后缀 OR Explorer dedup 后缀
-        Assert.Contains(@"\.([a-zA-Z0-9._-]+)(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
+        // ⚠ 同上:v2.8 起字符类含 @ 且 dedup 后缀有两个分支
+        Assert.Contains(@"\.([a-zA-Z0-9._@\-]+)(?:\s\(\d+\))?(?:-\d+(_\d+)*|_\d+(?:_\d+)*)?$", re);
     }
 }
 
@@ -143,8 +149,9 @@ public class NameTemplatePathBuilderTests
         // 注:NameTemplateCompiler 默认 type "any" 现在接受 [a-zA-Z0-9._-]+ (含 . _ -)。
         var re = NameTemplateCompiler.CompileToRegex(
             "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}");
-        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀 (?:-\\d+(_\\d+)*)?$
-        Assert.Contains(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$", re);
+        // compiler 现在在 $ 前允许 optional Windows rename 后缀 (?:\\s\\(\\d+\\))?$ OR Explorer dedup 后缀
+        // ⚠ v2.8 起 dedup 后缀有两个分支(-\d+(_\d+)* | _\d+(?:_\d+)*),见 NameTemplateCompiler line 52
+        Assert.Contains(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*|_\d+(?:_\d+)*)?$", re);
     }
 
     [Fact]
@@ -224,11 +231,11 @@ public class NameTemplatePathBuilderTests
             new() { Token = "{username}", Level = 1 },
         };
         var path = NameTemplatePathBuilder.BuildPath(
-            baseDestination: @"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\instagram",
+            baseDestination: @"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\instagram",
             template: "instagram-{username}-{uid:number}-{shortcode}-{first_name}-{date:yyyyMMdd}",
             mappings: mappings,
             captured: new[] { "nasa", "1234567890", "CwXYZ12345", "abc123", "20260927" });
-        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\instagram\nasa", path);
+        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\instagram\nasa", path);
     }
 
     // v2.3: Unicode token type — matches CJK / Cyrillic / accented chars
@@ -269,11 +276,11 @@ public class NameTemplatePathBuilderTests
             new() { Token = "{user_id}", Level = 1 },
         };
         var path = NameTemplatePathBuilder.BuildPath(
-            baseDestination: @"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\twitter",
+            baseDestination: @"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\twitter",
             template: "twitter-(@{user_id})-{user_name:unicode}-{date-time}-{status_id}",
             mappings: mappings,
             captured: new[] { "Cuminsides0", "夕阳无限好", "20260926-142011", "2103852135859593660" });
-        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\自动分类\DCIM\twitter\Cuminsides0", path);
+        Assert.Equal(@"D:\默认保存\下载\下载(待整理)\000-自动分类\DCIM\twitter\Cuminsides0", path);
     }
 
     // v2.3 Bug #46: support Explorer-style dedup suffix -N_N_N at end

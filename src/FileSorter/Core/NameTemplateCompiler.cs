@@ -44,7 +44,12 @@ public static class NameTemplateCompiler
             }
         }
         // v2.3 anchor: 支持 (N) Windows rename 后缀 OR Explorer-style -N_N_N dedup 后缀
-        sb.Append(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*)?$");
+        // v2.8 Bug #73: 三种重名后缀都要认 ——
+        //   (N)      Windows 资源管理器复制
+        //   -N_N_N   Explorer 批量重排
+        //   _N       第三方下载器 / 同步盘写的 Instagram 重名后缀
+        // v2.8 前只有前两种,`instagram#...#20260930_1.jpg` 这类直接匹配失败。
+        sb.Append(@"(?:\s\(\d+\))?(?:-\d+(_\d+)*|_\d+(?:_\d+)*)?$");
         return sb.ToString();
     }
 
@@ -126,12 +131,7 @@ public static class NameTemplateCompiler
             //   Putting `-` into default `unicode` would break templates where '-' IS the separator.
             // v2.7.6 Bug #57 (2026-09-28): ALSO accept U+00B7 (· middle dot), U+2022 (• bullet), U+30FB (・ katakana middle dot)
             //   for weibo/Twitter usernames with dot-separator style display names like '泠然·'.
-            // v2.7.10 (2026-09-29) Bug #58: full-width CJK punctuation: 、 。 ? ! , ; : "" '' ~ — –
-            // v2.7.11 (2026-09-29) Bug #59: Twitter/Instagram user-display names contain star/dot/heart
-            //   ＊ U+FF0A (fullwidth asterisk), ⑅ U+2445 (circled number 6 marker), ♥ U+2665 (heart)
-            //   plus the full OtherPunctuation class \p{Po} (covers all decorative PUA-ish symbols).
-            //   \p{Sm}/\p{Sc}/\p{Sk} also picked up so currency/emoji-adjacent math chars don't break.
-            "unicode-dash" or "chinese-dash" or "cjk-dash" or "chinese_chars-dash" or "text_unicode-dash" => @"[\p{L}\p{N}\p{S}\p{M}\p{Cs}\p{Po}\u00B0\uFF08\uFF09_\-\s().\u00B7\u2022\u30FB\uFF61\u300E\u300F\u3010\u3011\u300A\u300B\u3001\u3002\uFF1F\uFF01\uFF0C\uFF1B\uFF1A\u201C\u201D\u2018\u2019\uFF5E\u2014\u2013\uFF0A\u2665\u2764\u2728\u2726\u2605\u2606\u2731\u2736\u2738\u2734]+",
+            "unicode-dash" or "chinese-dash" or "cjk-dash" or "chinese_chars-dash" or "text_unicode-dash" => @"[\p{L}\p{N}\p{S}\p{M}\p{Cs}\p{Po}\u00B0\uFF08\uFF09_\-\s().\u00B7\u2022\u30FB\uFF61\u300E\u300F\u3010\u3011\u300A\u300B\u3001\u3002\uFF1F\uFF01\uFF0C\uFF1B\uFF1A\u201C\u201D\u2018\u2019\uFF5E\u2014\u2013\uFF0A\u2665\u2764\u2728\u2726\u2605\u2606\u2731\u2736\u2738\u2734\[\]]+", // v2.7.10 (2026-09-29) Bug #58: added 全角标点 (full-width CJK punctuation): 、 。 ? ! , ; : "" ' ~ — –; v2.7.11 (2026-09-29) Bug #59: added \p{Po} (OtherPunctuation), ＊ (U+FF0A), ♥ (U+2665), decorative symbols; v2.7.12 (2026-10-01) Bug #60: added half-width [ ] (U+005B/005D) for 小红书 titles like `_日常[话题]_ _乱带标题别管我了[话题]_ _夜色多美别浪费[话题]_`
             _ => throw new ArgumentException($"Unknown token type: {typeSpec}")
         };
     }
